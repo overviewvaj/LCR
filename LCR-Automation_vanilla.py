@@ -3389,7 +3389,7 @@ acct_nums_to_replace = [
     61198261406001, 61198401406001, 61198401406002, 61198261406002, 61198262805002,
     61198402805008, 61198402805002, 61198262805008, 61198405406001, 61198265406001,
     61198265507010, 61198405507010, 61198405507001, 61198265507001, 61198265507004,
-    61199785507007, 61198401605001, 61198401625001, 61198262100001
+    61199785507007, 61198401605001, 61198401625001
 ]
 
 # Condition to check for the account numbers to replace
@@ -3538,8 +3538,45 @@ for file_ext in ['.txt', '.csv']:
 print("DataFrames saved in both .txt and .csv formats in the provided folder.")
 
 
+def replace_and_sum_assets(Assets, trunc_df_frp_acc):
+    """
+    Sum the values in the 'Total Balance' column from 'trunc_df_frp_acc',
+    fetch the row where 'ACCT NUMBER' is 61198262100001 from 'Assets',
+    and replace the 'EOD BALANCE(BILR)' value in 'Assets' with the calculated sum.
+
+    Parameters:
+    Assets (pd.DataFrame): The 'Assets' DataFrame.
+    trunc_df_frp_acc (pd.DataFrame): The 'trunc_df_frp_acc' DataFrame.
+
+    Returns:
+    pd.DataFrame: Updated 'Assets' DataFrame.
+    """
+
+    acct_number = 61198262100001
+
+    # Ensure the specific 'ACCT NUMBER' exists in both DataFrames
+    if acct_number not in Assets['ACCT NUMBER'].values:
+        raise ValueError(f"ACCT NUMBER {acct_number} not found in 'Assets' DataFrame.")
+    #if acct_number not in trunc_df_frp_acc['ACCT NUMBER'].values:
+       # raise ValueError(f"ACCT NUMBER {acct_number} not found in 'trunc_df_frp_acc' DataFrame.")
+
+    # Calculate the sum of 'Total Balance' from 'trunc_df_frp_acc'
+    BTL_LTV_SUM = trunc_df_frp_acc['Total Balance'].sum()
+
+    # Fetch the row/data when 'ACCT NUMBER' in 'Assets' is 61198262100001
+    BTL_acccount = Assets[Assets['ACCT NUMBER'] == acct_number]
+
+    # Calculate the final sum
+    final_sum = BTL_acccount['EOD BALANCE(BILR)'].values[0] + BTL_LTV_SUM
+
+    # Replace the value in 'EOD BALANCE(BILR)' for the row where 'ACCT NUMBER' is 61198262100001
+    Assets.loc[Assets['ACCT NUMBER'] == acct_number, 'EOD BALANCE(BILR)'] = final_sum
+
+    return Assets
 
 
+# Perform the replacement and sum calculation
+Assets = replace_and_sum_assets(Assets, trunc_df_frp_acc)
 
 
 
