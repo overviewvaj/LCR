@@ -66,7 +66,35 @@ all_files = os.listdir(parent_folder)
 
 #all_files
 
+def read_excel_file(parent_folder, file_name):
+    """
+    Check if the specified Excel file exists in the given folder and read it into a DataFrame.
+
+    Args:
+    parent_folder (str): Path of the parent folder.
+    file_name (str): Name of the Excel file.
+
+    Returns:
+    pd.DataFrame: DataFrame containing the data from the Excel file, or None if the file does not exist.
+    """
+    file_path = os.path.join(parent_folder, file_name)
+
+    # Check if the file exists before reading it
+    if os.path.exists(file_path):
+        # Read the Excel file into a DataFrame
+        df = pd.read_excel(file_path)
+        print(f"File '{file_name}' loaded successfully.")
+        return df
+    else:
+        print(f"The file '{file_name}' does not exist in the specified folder.")
+        return None
+
+# Usage
+#parent_folder = 'path_to_your_parent_folder'
 file_name = 'Logic_for_Deposit_Outflows.xlsx'
+Logic_for_Deposit_Outflows_df = read_excel_file(parent_folder, file_name)
+
+'''file_name = 'Logic_for_Deposit_Outflows.xlsx'
 file_path = os.path.join(parent_folder, file_name)
 
 # Check if the file exists before reading it
@@ -76,7 +104,7 @@ if os.path.exists(file_path):
 
 else:
     print(f"The file '{file_name}' does not exist in the specified folder.")
-
+'''
 
 #Logic_for_Deposit_Outflows_df
 
@@ -3453,15 +3481,7 @@ truncated_acctMast = filter_and_process(truncated_acctMast)
 Assets = truncated_acctMast[truncated_acctMast['A/L'] == 'A']
 Liabilities = truncated_acctMast[truncated_acctMast['A/L'] == 'L']
 
-
-
-
-
-Assets.info()
-
-
-
-
+#Assets.info()
 
 # Convert the type of the column ACCT NUMBER from float 64 to int64
 
@@ -3480,10 +3500,6 @@ condition = Assets['ACCT NUMBER'].isin(acct_nums_to_replace)
 
 # Update the 'BILR' column based on the condition
 Assets.loc[condition, 'EOD BALANCE(BILR)'] = 0
-
-
-
-
 
 # Define a dictionary to map DataFrame names to their corresponding variables
 data_frames = {
@@ -3509,18 +3525,10 @@ for file_name, data_frame in data_frames.items():
 
 # Confirm the successful saving of the files
 print("DataFrames saved in both .txt and .csv formats in the provided folder.")
-
-
-
-
-
 #Assets.info()
 
 
 # ### BTL LTV File 
-
-
-
 
 def read_dependency_coding_file(parent_folder):
     """
@@ -3578,21 +3586,8 @@ if df_frp_acc is not None:
 else:
     print("No Capital Dependency data loaded.")
 
-
-
-
-
 #df_frp_acc
-
-
-
-
-
-df_frp_acc.info()
-
-
-
-
+#df_frp_acc.info()
 
 # Select the desired columns
 trunc_frp_col = df_frp_acc[['Account Number', 'Account Short Name', 'Account Status Description', 'Total Balance', 
@@ -3661,10 +3656,7 @@ def replace_and_sum_assets(Assets, trunc_df_frp_acc):
 # Perform the replacement and sum calculation
 Assets = replace_and_sum_assets(Assets, trunc_df_frp_acc)
 
-
-trunc_df_frp_acc.info()
-
-
+#trunc_df_frp_acc.info()
 #Assets.columns
 
 
@@ -3950,10 +3942,6 @@ capital_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB F
                                    'S&P Number','Final Rating', 'Final Letter Rating', 'CQS','Incorporation Code',
                                    'Corporate / Institution', 'Investment Combo','RW', 'Customer Name']]
 
-
-
-
-
 # Group the DataFrame by 'Product Type' and calculate the sum of 'Balance BILR'
 #az = capital_security.groupby('Product Type')['Book Value GBP'].sum().reset_index()
 #az
@@ -3961,9 +3949,6 @@ capital_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB F
 
 
 # ### Capital file Operation
-
-
-
 
 # Find the file matching the specified pattern
 file_pattern = os.path.join(parent_folder, 'New File_Capital RWA*.xlsx')
@@ -3984,9 +3969,6 @@ capital_file_wb = app.books.open(file_path)
 print("Worksheets in the workbook:")
 for sheet in capital_file_wb.sheets:
     print(sheet.name)
-
-
-
 
 
 # Update the Worksheet named Assets
@@ -4031,7 +4013,42 @@ assets_subset = Assets[columns_to_keep]
 # Use the defined function to write the subset to the worksheet
 write_assets_to_worksheet(ws_capital_asset, assets_subset)
 
-Assets
+#Assets
+
+
+# Update the Worksheet named Liabilities
+
+def write_liabilites_to_worksheet(ws, start_row=2, start_column=1):
+    """
+    Clear the contents of a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to clear.
+    start_row (int): Starting row for clearing data. Default is 6.
+    start_column (int): Starting column for clearing data. Default is 1.
+
+    Returns: the new values from data frame capital_df_loandep
+    None
+    """
+    # Get the last used row and column
+    last_row = ws.cells.last_cell.row
+    last_column = ws.cells.last_cell.column
+
+    # Get the range starting from the specified row and column to the last row and column
+    range_to_clear = ws.range((start_row, start_column), (last_row, last_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = Liabilities.values
+
+# Example usage:
+# Assuming ws_MMP is the worksheet named "MM Placements"
+ws_liabilities = capital_file_wb.sheets["Liabilities"]
+
+# Clear the worksheet starting from the 6th row across all columns
+write_liabilites_to_worksheet(ws_liabilities)
 
 
 '''# Select the worksheet named "Lombard Repay"
@@ -4153,7 +4170,7 @@ def clear_and_write_data_to_sheet(ws, df, start_row=5, start_column=1, end_colum
     None
     """
     # Get the range starting from the specified row and column
-    end_row = start_row + len(df) - 1  # Number of rows based on DataFrame length
+    end_row = ws.cells.last_cell.row  
     #end_column = start_column + df.shape[1] - 1  # Number of columns based on DataFrame shape
     range_to_clear = ws.range((start_row, start_column), (end_row, end_column))
 
