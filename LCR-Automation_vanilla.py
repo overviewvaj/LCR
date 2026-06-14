@@ -1176,36 +1176,15 @@ def uncovered_amt_ccy(row):
         return "0"
 # Apply the uncovered_amt_ccy logic to create a new column 'Uncovered amt CCY'
 df_FSCSSUB['Uncovered amt CCY'] = df_FSCSSUB.apply(uncovered_amt_ccy, axis=1)   
-
-
-
-
-
-df_FSCSSUB['Uncovered amt CCY'].info()
-
-
-
-
+#df_FSCSSUB['Uncovered amt CCY'].info()
 
 #df_FSCSSUB.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/03.10.2023/trial/a1.csv', index = False)
-
-
-
-
 
 # Round down to 2 decimal places
 df_FSCSSUB['Balance BILR'] = df_FSCSSUB['Balance BILR'].round(2)
 
-
-
-
-
-print('Sum of column Balance BILR: ', df_FSCSSUB['Balance BILR'].sum().round(2))
-print('Sum of column Covered Amount GBP: ', df_FSCSSUB['Covered Amount GBP'].sum())
-
-
-
-
+#print('Sum of column Balance BILR: ', df_FSCSSUB['Balance BILR'].sum().round(2))
+#print('Sum of column Covered Amount GBP: ', df_FSCSSUB['Covered Amount GBP'].sum())
 
 # Column Stable Deposit covered Balance
 def stable_deposit_bal_covered(row):
@@ -1217,20 +1196,8 @@ def stable_deposit_bal_covered(row):
 # Apply the stable_deposit_bal_covered logic to create a new column 'Stable Deposit covered Balance'
 df_FSCSSUB['Stable Deposit covered Balance'] = df_FSCSSUB.apply(stable_deposit_bal_covered, axis=1)   
 
-
-
-
-
 df_FSCSSUB['Stable Deposit covered Balance'].sum().round(2)
-
-
-
-
-
-df_FSCSSUB['Currency'].value_counts()
-
-
-
+#df_FSCSSUB['Currency'].value_counts()
 
 
 # Column Stable Deposit Balance CCY
@@ -1239,15 +1206,7 @@ df_FSCSSUB['Stable Deposit Balance CCY'] = df_FSCSSUB['Stable Deposit covered Ba
 
 df_FSCSSUB['Stable Deposit Balance CCY'] = df_FSCSSUB['Stable Deposit Balance CCY'].round(2)
 
-
-
-
-
-df_FSCSSUB['Stable Deposit Balance CCY'].sum()
-
-
-
-
+#df_FSCSSUB['Stable Deposit Balance CCY'].sum()
 
 '''
 # Column Stable Deposit Balance CCY
@@ -1265,27 +1224,13 @@ def stable_deposit_ccy_bal(row):
 # Apply the stable_deposit_bal_covered logic to create a new column 'Stable Deposit Balance CCY'
 df_FSCSSUB['Stable Deposit Balance CCY'] = df_FSCSSUB.apply(stable_deposit_ccy_bal, axis=1)    ''' 
 
-
-
-
-
 # Column Uncovered amt CCY2
 
 df_FSCSSUB['Uncovered amt CCY2'] = df_FSCSSUB['Amount in Acct Crncy'] - df_FSCSSUB['Stable Deposit Balance CCY']
 
 df_FSCSSUB['Uncovered amt CCY2'] = df_FSCSSUB['Uncovered amt CCY2'].round(2)  # Round the column to be upto 2 decimal points
 
-df_FSCSSUB['Uncovered amt CCY2'].sum()
-
-
-
-
-
-
-
-
-
-
+#df_FSCSSUB['Uncovered amt CCY2'].sum()
 
 # Column CAA+SBA+TDA Split
 
@@ -1301,16 +1246,7 @@ def categorize_schm_code(code):
 
 # Apply the categorization function to create a new 'Result' column
 df_FSCSSUB['CAA+SBA+TDA Split'] = df_FSCSSUB['SCHM_CODE'].apply(lambda x: categorize_schm_code(x))
-
-
-
-
-
-df_FSCSSUB['CAA+SBA+TDA Split'].value_counts()
-
-
-
-
+#df_FSCSSUB['CAA+SBA+TDA Split'].value_counts()
 
 # Column NSFR CATEGORY
 
@@ -1327,27 +1263,9 @@ def nsfr_categ(row):
         return "NON RETAIL Deposit"
 
 
-
-
-
 # Apply the categorization function to create a new 'Result' column
 df_FSCSSUB['NSFR CATEGORY'] = df_FSCSSUB.apply(nsfr_categ, axis = 1)
-
-
-
-
-
-df_FSCSSUB['NSFR CATEGORY'].value_counts()
-
-
-
-
-
-df_FSCSSUB.columns
-
-
-
-
+#df_FSCSSUB['NSFR CATEGORY'].value_counts()
 
 # Drop the column Exchange Rate as we no longer require the column
 col_to_drop = ['Current Date','Future Date', 'Notice Account Date', 'CASA Date',
@@ -1356,42 +1274,13 @@ col_to_drop = ['Current Date','Future Date', 'Notice Account Date', 'CASA Date',
        'vlookup_total', 'Category']
 df_FSCSSUB = df_FSCSSUB.drop(columns=col_to_drop)
 
-
-
-
-
-df_FSCSSUB.columns
-
-
-
-
-
 #df_FSCSSUB.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/December Validation/December-23/fscs_test_29thFeb1.csv', index = False)
 
 
 # # FX Deals
 
-
-
-
-df_fxdeals.columns
-
-
-
-
-
 # Add an empty column without any header to the data set
 df_fxdeals[''] = ''
-
-
-
-
-
-df_fxdeals.columns
-
-
-
-
 
 # Merge the DataFrames on column 'FX Sold Currency'
 df_fxdeals = df_fxdeals.merge(df_exch, left_on='FX Sold Currency', right_on='Currency Code', how='left')
@@ -1402,10 +1291,6 @@ df_fxdeals = df_fxdeals.drop(['Currency Code'], axis =1 )
 # Rename the column name from ORIG_BAL_BEFORE_INT to Amount in Acct Crncy
 df_fxdeals.rename(columns={'Exchange Rate': 'FX Sold Exchange Rate'}, inplace=True)
 
-
-
-
-
 # Merge the DataFrames on column 'FX Bought Currency'
 df_fxdeals = df_fxdeals.merge(df_exch, left_on='FX Bought Currency', right_on='Currency Code', how='left')
 
@@ -1415,30 +1300,11 @@ df_fxdeals = df_fxdeals.drop(['Currency Code'], axis =1 )
 # Rename the column name from ORIG_BAL_BEFORE_INT to Amount in Acct Crncy
 df_fxdeals.rename(columns={'Exchange Rate': 'FX Bought Exchange Rate'}, inplace=True)
 
-
-
-
-
-df_fxdeals.columns
-
-
-
-
-
 # Column MTM CCY
 df_fxdeals['MTM CCY'] = df_fxdeals['FX MTM Value'] * df_fxdeals['FX Sold Exchange Rate']
 
 df_fxdeals['MTM CCY'] = df_fxdeals['MTM CCY'].round(2)  # round down the column to 2 decimal points
-
-
-
-
-
-df_fxdeals['MTM CCY'].sum()
-
-
-
-
+#df_fxdeals['MTM CCY'].sum()
 
 '''# Column MTM CCY
 def mtm_ccy (row):
@@ -1452,10 +1318,6 @@ def mtm_ccy (row):
 # Apply the function (mtm_ccy) to create a new column
 df_fxdeals['MTM CCY'] = df_fxdeals.apply(mtm_ccy, axis=1)'''
 
-
-
-
-
 # Column LCR ROW
 def lcr_row_fxdeals(row):
     if row ['FX MTM Value'] > 0:
@@ -1465,48 +1327,21 @@ def lcr_row_fxdeals(row):
     
 # Apply the function (lcr_row) to create a new column
 df_fxdeals['LCR ROW'] = df_fxdeals.apply(lcr_row_fxdeals, axis=1)
-
-
-
-
-
-df_fxdeals['LCR ROW'].value_counts()
-
-
-
-
+#df_fxdeals['LCR ROW'].value_counts()
 
 # Column SWAP PAYBLE GBP
 df_fxdeals['SWAP PAYBLE GBP'] = df_fxdeals['FX Sold Amount'] / df_fxdeals['FX Sold Exchange Rate']
 
 # Round down the column to 2 decimal points
 df_fxdeals['SWAP PAYBLE GBP'] = df_fxdeals['SWAP PAYBLE GBP'].round(2) 
-
-
-
-
-
-df_fxdeals['SWAP PAYBLE GBP'].sum()
-
-
-
-
+#df_fxdeals['SWAP PAYBLE GBP'].sum()
 
 # Column SWAP RECV GBP
 df_fxdeals['SWAP RECV GBP'] = df_fxdeals['FX Bought Amount']/ df_fxdeals['FX Bought Exchange Rate']
 
 # Round down the column SWAP RECV GBP to 2 decimal points
 df_fxdeals['SWAP RECV GBP'] = df_fxdeals['SWAP RECV GBP'].round(2)
-
-
-
-
-
-df_fxdeals['SWAP RECV GBP'].sum()
-
-
-
-
+#df_fxdeals['SWAP RECV GBP'].sum()
 
 '''def swp_payable_gbp (row):
     if row ['FX Sold Currency'] == 'USD':
@@ -1534,39 +1369,15 @@ df_fxdeals['SWAP RECV GBP'] = df_fxdeals.apply(swp_recv_gbp, axis=1)
 
 '''
 
-
-
-
-
 # Drop the columns 'FX Sold Exchange Rate', 'FX Bought Exchange Rate' as they are no longer required
 
 cols_to_drop = ['FX Sold Exchange Rate', 'FX Bought Exchange Rate']
 
 df_fxdeals = df_fxdeals.drop(columns=cols_to_drop)
 
-
-
-
-
 #merged_fxdeals_exch.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/28.09.2023/fxdeasls1.csv', index = False)
 
-
-
-
-
-df_fxdeals
-
-
 # # Derivatives File
-
-
-
-
-df_derivative.columns
-
-
-
-
 
 # Merge the DataFrames on column 'Currency Code1'
 df_derivative = df_derivative.merge(df_exch, left_on='Currency Code1', right_on='Currency Code', how='left')
@@ -1587,31 +1398,13 @@ df_derivative = df_derivative.drop(['Currency Code'], axis =1 )
 # Rename the column name from ORIG_BAL_BEFORE_INT to Amount in Acct Crncy
 df_derivative.rename(columns={'Exchange Rate': 'Currency Code2 Exch Rate'}, inplace=True)
 
-
-
-
-
-df_derivative.columns
-
-
-
-
-
 # Column MTM CCY
 df_derivative['MTM CCY'] = df_derivative['MTM TOTAL GBP'] * df_derivative['Currency Code2 Exch Rate']
 
 # Round down the column to 2 decimal points
 df_derivative['MTM CCY']= df_derivative['MTM CCY'].round(2)
 
-
-
-
-
-df_derivative['MTM CCY'].sum()
-
-
-
-
+#df_derivative['MTM CCY'].sum()
 
 '''
 # Column MTM CCY
@@ -1629,15 +1422,6 @@ def derivatives_mtm_ccy (row):
 df_derivative['MTM CCY'] = df_derivative.apply(derivatives_mtm_ccy, axis=1)'''
 
 
-
-
-
-
-
-
-
-
-
 # Column LCR ROW
 
 def lcr_row_derivaties(row):
@@ -1648,16 +1432,7 @@ def lcr_row_derivaties(row):
     
 # Apply the function (lcr_row_derivaties) to create a new column
 df_derivative['LCR ROW'] = df_derivative.apply(lcr_row_derivaties, axis=1)
-
-
-
-
-
-df_derivative['LCR ROW'].value_counts()
-
-
-
-
+#df_derivative['LCR ROW'].value_counts()
 
 # Column FUTURE PAYABLE GBP
 
@@ -1665,16 +1440,7 @@ df_derivative['FUTURE PAYABLE GBP'] = -(df_derivative['Notional Amount2 CCY']/ d
 
 # ound down the column upto 2 decimal points
 df_derivative['FUTURE PAYABLE GBP'] =df_derivative['FUTURE PAYABLE GBP'].round(2)
-
-
-
-
-
-df_derivative['FUTURE PAYABLE GBP'].sum()
-
-
-
-
+#df_derivative['FUTURE PAYABLE GBP'].sum()
 
 # Column FUTURE RECEIVABLE GBP
 
@@ -1682,26 +1448,13 @@ df_derivative['FUTURE RECEIVABLE GBP'] = df_derivative['Notional Amount1 GBP'] /
 
 # Round down the column upto 2 decimal points
 df_derivative['FUTURE RECEIVABLE GBP'] = df_derivative['FUTURE RECEIVABLE GBP'].round(2)
-
-
-
-
-
-df_derivative['FUTURE RECEIVABLE GBP'].sum()
-
-
-
-
+#df_derivative['FUTURE RECEIVABLE GBP'].sum()
 
 # Drop the columns Currency Code2 Exch Rate and Currency Code1 Exch Rate
 
 cols_to_drop = ['Currency Code2 Exch Rate', 'Currency Code1 Exch Rate']
 
 df_derivative =df_derivative.drop(columns=cols_to_drop)
-
-
-
-
 
 '''
 # Column FUTURE PAYABLE GBP
@@ -1732,35 +1485,7 @@ df_derivative['FUTURE RECEIVABLE GBP'] = df_derivative.apply(future_receivable_g
 
 '''
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-df_derivative
-
-
 # # Repay File Start
-
-
-
-
-df_repay.columns
-
-
-
-
 
 # Merge the DataFrames on column 'Currency Code1'
 df_repay = df_repay.merge(df_exch, left_on='Currency', right_on='Currency Code', how='left')
@@ -1768,26 +1493,8 @@ df_repay = df_repay.merge(df_exch, left_on='Currency', right_on='Currency Code',
 # Drop the unwanted column 'Currency Code'
 df_repay = df_repay.drop(['Currency Code'], axis =1 )
 
-
-
-
-
-df_repay.columns
-
-
-
-
-
-
-
-
 # # Add the dates to the repay file as separate columns
-
-
-
-
 # Add new date columns to the data frame 
-
 # These columns are used for future reference in the code
 
 # Add a new column named Current Date
@@ -1799,11 +1506,7 @@ df_repay['CASA_Notice_Acc_Date'] = casa_excl_notice_acc_dt
 # Add the new column named Future Date
 df_repay['Future Date'] = future_date
 
-
 # # Convert the Dates in appropriate format so that the date columns can be worked
-
-
-
 
 # Convert column Current Date to datetime
 df_repay['Current Date'] = pd.to_datetime(df_repay['Current Date'], format='%d/%m/%Y')
@@ -1820,35 +1523,11 @@ df_repay['Interest Cash Flow Date'] = pd.to_datetime(df_repay['Interest Cash Flo
 # Convert column Repayment Date to datetime
 df_repay['Repayment Date'] = pd.to_datetime(df_repay['Repayment Date'], format='%d-%m-%Y')
 
-
-
-
-
 '''a = df_repay[df_repay['Interest Cash Flow Date'] <= df_repay['Current Date']]
 a'''
 
-
-
-
-
 '''b = df_repay[df_repay['Repayment Date'] <= df_repay['Current Date']]
 b'''
-
-
-
-
-
-df_repay['Repayment Date']
-
-
-
-
-
-df_repay['CASA_Notice_Acc_Date']
-
-
-
-
 
 # when the values in column 'Interest Cash Flow Date' is less than or equal to current date then replace such instances with CASA_Notice_Acc_Date 
 
@@ -1863,24 +1542,12 @@ mask_1 = (df_repay['Account type'] == 'TDA') & \
 df_repay.loc[mask_1, ['Interest Cash Flow Date', 'Repayment Date']] = \
     df_repay.loc[mask_1, 'CASA_Notice_Acc_Date'].dt.date
 
-
-
-
-
-df_repay['Repayment Date']
-
-
-
-
+#df_repay['Repayment Date']
 
 a = df_repay[df_repay['Repayment Date']<= df_repay['Current Date']]
-a
-
+#a
 
 # # Change the Interest Cash Flow Date and Repayment Date back to the desired Format
-
-
-
 
 # Convert column Interest Cash Flow Date to datetime
 df_repay['Interest Cash Flow Date'] = pd.to_datetime(df_repay['Interest Cash Flow Date'])
@@ -1888,43 +1555,16 @@ df_repay['Interest Cash Flow Date'] = pd.to_datetime(df_repay['Interest Cash Flo
 # Convert column Repayment Date to datetime
 df_repay['Repayment Date'] = pd.to_datetime(df_repay['Repayment Date'])
 
-
-
-
-
 # Convert column Interest Cash Flow Date to datetime
 df_repay['Interest Cash Flow Date'] = pd.to_datetime(df_repay['Interest Cash Flow Date'], format='%d-%m-%Y')
 
 # Convert column Repayment Date to datetime
 df_repay['Repayment Date'] = pd.to_datetime(df_repay['Repayment Date'])
 
-
-
-
-
-df_repay['Interest Cash Flow Date']
-
-
-
-
-
-df_repay['Repayment Date']
-
-
-
-
-
-df_repay
-
-
-
-
+#df_repay['Interest Cash Flow Date']
+#df_repay['Repayment Date']
 
 #df_repay.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/December Validation/December-23/repay_test2.csv', index = False)
-
-
-
-
 
 # Column INTEREST AMOUNT GBP
 
@@ -1932,16 +1572,7 @@ df_repay['INTEREST AMOUNT GBP'] = df_repay['Interest Cash Flow Amount'] / df_rep
 
 # Round down the column upto 2 decimals
 df_repay['INTEREST AMOUNT GBP'] = df_repay['INTEREST AMOUNT GBP'].round(2)
-
-
-
-
-
-df_repay['INTEREST AMOUNT GBP'].sum()
-
-
-
-
+#df_repay['INTEREST AMOUNT GBP'].sum()
 
 # Column PRINCIPLE AMOUNT GBP
 
@@ -1949,15 +1580,7 @@ df_repay['PRINCIPLE AMOUNT GBP'] = df_repay['Repayment Amount'] / df_repay['Exch
 
 # Round down the column upto 2 decimals
 df_repay['PRINCIPLE AMOUNT GBP'] = df_repay['PRINCIPLE AMOUNT GBP'].round(2)
-
-
-
-
-
-df_repay['PRINCIPLE AMOUNT GBP'].sum().round(2)
-
-
-
+#df_repay['PRINCIPLE AMOUNT GBP'].sum().round(2)
 
 
 '''
@@ -1989,34 +1612,17 @@ df_repay['PRINCIPLE AMOUNT GBP'] = df_repay.apply(principle_amt_gbp, axis=1)
 
 '''
 
-
-
-
-
 # Converting the columns dtype to string 
 df_repay['Customer Identifier'] = df_repay['Customer Identifier'].astype(str)
 
 df_cust['Customer Identifier'] = df_cust['Customer Identifier'].astype(str)
-
-
-
-
 
 # Create a dictionary mapping Customer Identifier to Retail Flag
 customer_mapping = df_cust.set_index('Customer Identifier')['Retail Flag'].to_dict()
 
 # Create a new column 'Retail Flag' in df_repay and fill it based on the mapping
 df_repay['Retail Flag'] = df_repay['Customer Identifier'].map(customer_mapping).fillna(0)
-
-
-
-
-
-df_repay['Retail Flag'].value_counts()
-
-
-
-
+#df_repay['Retail Flag'].value_counts()
 
 # Create a dictionary mapping Customer Identifier to SME/Non SME
 SME_mapping = df_cust.set_index('Customer Identifier')['SME Flag'].to_dict()
@@ -2024,16 +1630,8 @@ SME_mapping = df_cust.set_index('Customer Identifier')['SME Flag'].to_dict()
 # Create a new column 'Retail Flag' in df_repay and fill it based on the mapping
 df_repay['SME/NON SME'] = df_repay['Customer Identifier'].map(SME_mapping).fillna(0)
 
-
-
-
-
 #Check the total occurances for all the uniques 
-df_repay['SME/NON SME'].value_counts()
-
-
-
-
+#df_repay['SME/NON SME'].value_counts()
 
 # Create a dictionary mapping Customer Identifier to SME/Non SME
 sector_code_mapping = df_cust.set_index('Customer Identifier')['Sector Code'].to_dict()
@@ -2041,23 +1639,11 @@ sector_code_mapping = df_cust.set_index('Customer Identifier')['Sector Code'].to
 # Create a new column 'Retail Flag' in df_repay and fill it based on the mapping
 df_repay['SECTOR CODE'] = df_repay['Customer Identifier'].map(sector_code_mapping).fillna(0).astype(int)
 
-
-
-
-
 #Check the total occurances for all the uniques 
-df_repay['SECTOR CODE'].value_counts()
-
-
-
-
+#df_repay['SECTOR CODE'].value_counts()
 
 # Check the unique entries in column Account Type
-df_repay['Account type'].unique()
-
-
-
-
+#df_repay['Account type'].unique()
 
 # Create a dictionary to map Account Type values to Type values
 account_type_mapping = {
@@ -2068,92 +1654,21 @@ account_type_mapping = {
     'SECURITY': 'Investments',
     'COMMLOAN': 'Treasury'}
 
-
-
-
-
 # Apply the mapping to create the 'Type' column in df_repay
 df_repay['Type'] = df_repay['Account type'].map(account_type_mapping)
-
-
-
-
-
-df_repay['Type'].value_counts()
-
-
-
-
-
-df_repay.columns
-
-
-
-
+#df_repay['Type'].value_counts()
 
 # Create a new column 'Inflow/Outflow' in df_repay
 df_repay['Inflow/Outflow'] = df_repay.apply(lambda row: 'Inflow' if (row['INTEREST AMOUNT GBP'] + row['PRINCIPLE AMOUNT GBP'] > 0) and (row['Account type'] != 'NSB') else 'Outflow', axis=1)
+#df_repay['Inflow/Outflow'].value_counts()
 
-
-
-
-
-df_repay['Inflow/Outflow'].value_counts()
-
-
-
-
-
-#Stop and check from below for the column Deposit outflow category
-
-
-
-
-
-print(df_repay.shape)
-print(df_FSCSSUB.shape)
-
-
-
-
-
-df_repay['Deal Reference'].duplicated().sum()
-
-
-
-
-
-df_FSCSSUB.columns
-
-
-
-
-
-df_repay.shape
-
-
-
-
-
-df_repay.info()
-
-
-
-
+#df_repay['Deal Reference'].duplicated().sum()
 
 # condition 1: (OR(D5="TDA",D5="NSB")
 condition_1 = df_repay['Account type'].isin(['TDA', 'NSB'])
 df_repay['condition_1'] = np.where(condition_1, 1, 0)
 
-
-
-
-
-df_repay['condition_1']
-
-
-
-
+#df_repay['condition_1']
 
 # Concatenat the values of the two columns into a new column
 
@@ -2163,44 +1678,12 @@ def combine_columns(row):
 #Apply logic (combine_columns) to create the column LCR Sheet Lookup
 df_repay['CUST_N_ACC_NUM'] = df_repay.apply(combine_columns, axis=1)
 
-
-
-
-
-#df_repay.columns
-
-
-
-
-
-df_FSCSSUB.columns
-
-
-
-
-
-df_FSCSSUB.head()
-
-
-
-
-
 # Create a new data frame for a truncated version of FSCS data frame
 
 # Select the 'CUSTOMER_ID', 'ACC_NUMBER'ananaconda columns from the DataFrame df_FSCSSUB 
 
-
 df_trunc_FSCS = df_FSCSSUB[['CUSTOMER_ID', 'ACC_NUMBER','INDIVIDUAL + SME','CAT_1','LIAB_OUTF_CAT', 'NON-RETAIL DEPOSIT ROW250']]
-
-
-
-
-
-df_trunc_FSCS
-
-
-
-
+#df_trunc_FSCS
 
 # Concatenat the values of the two columns into a new column
 
@@ -2210,23 +1693,10 @@ def combine_columns(row):
 #Apply logic (combine_columns) to create the column LCR Sheet Lookup
 df_trunc_FSCS['CUST_N_ACC_NUM'] = df_trunc_FSCS.apply(combine_columns, axis=1)
 
-
-
-
-
 # Merge the data frames based on common column "CUST_N_ACC_NUM" and "CUST_N_ACC_NUM"
 
 df_repay = pd.merge(df_repay, df_trunc_FSCS, left_on='CUST_N_ACC_NUM', right_on='CUST_N_ACC_NUM', how='left')
-
-
-
-
-
-df_repay.head()
-
-
-
-
+#df_repay.head()
 
 '''# Create a dictionary mapping Deal Reference to LIAB_OUTF_CAT
 mapping_dict = df_FSCSSUB.set_index('ACC_NUMBER')['LIAB_OUTF_CAT'].to_dict()
@@ -2234,10 +1704,6 @@ mapping_dict = df_FSCSSUB.set_index('ACC_NUMBER')['LIAB_OUTF_CAT'].to_dict()
 # Use map to apply the mapping to df_repay
 df_repay['col_frm_FSCS'] = df_repay['Deal Reference'].map(mapping_dict)
 '''
-
-
-
-
 
 # Coulumn Deposit outflow category
 def deposit_outflow_cat(row):
@@ -2252,34 +1718,10 @@ df_repay['Deposit outflow category'] = df_repay.apply(deposit_outflow_cat, axis=
 
 # Fill empty values in 'Deposit outflow category' with values from 'Type' column
 df_repay['Deposit outflow category'].fillna(df_repay['Type'], inplace=True)
-
-
-
-
-
 #df_repay['Deposit outflow category'].value_counts()
 
-
-
-
-
 #merged_df.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/December Validation/December-23/merged_REpay_N_fscs.csv', index = False)
-
-
-
-
-
 #merged_df.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/03.10.2023/trial/merged_df3.csv', index = False)
-
-
-
-
-
-df_repay
-
-
-
-
 
 '''# Create a mapping dictionary from 'ACC_NUMBER' to 'LIAB_OUTF_CAT'
 mapping_dict = dict(zip(df_FSCSSUB['CUSTOMER_ID'], df_FSCSSUB['LIAB_OUTF_CAT']))
@@ -2291,40 +1733,15 @@ df_repay['Type from FSCS'] = df_repay['Customer Identifier'].map(mapping_dict)
 # Fill empty values with 0
 #df_repay['NON-RETAIL DEPOSIT ROW250'].fillna(0, inplace=True)'''
 
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 '''# Create a dictionary to map 'Deal Reference' to 'LIAB_OUTF_CAT'
 deal_ref_to_liab_outf_cat = df_FSCSSUB.set_index('ACC_NUMBER')['LIAB_OUTF_CAT'].to_dict()
 
 # Update the 'Deposit outflow category' column in df_repay based on the mapping
 df_repay['Type from FSCS'] = df_repay['Deal Reference'].map(deal_ref_to_liab_outf_cat).fillna('')'''
 
-
-
-
-
 # Use the Deal Reference values to look up data in df_security
 #df_repay.loc[investments_rows.index, 'HQLA'] = investments_rows['Deal Reference'].map(
 #    df_security.set_index('Deal Reference')['HQ Indicator']).fillna(0)
-
-
-
-
 
 # Column HQLA flag
 
@@ -2341,16 +1758,7 @@ def repay_hqla_flag(row):
 # Apply the logic (repay_hqla_flag) to create the 'HQLA flag' column in df_repay
 df_repay['HQLA flag'] = df_repay.apply(repay_hqla_flag, axis=1)
 df_repay['HQLA flag'].fillna(0, inplace=True)
-
-
-
-
-
-df_repay['HQLA flag'].value_counts()
-
-
-
-
+#df_repay['HQLA flag'].value_counts()
 
 # Column LCR sheet Lookup
 
@@ -2360,28 +1768,10 @@ def combine_columns(row):
 #Apply logic (combine_columns) to create the column LCR Sheet Lookup
 df_repay['LCR sheet Lookup'] = df_repay.apply(combine_columns, axis=1)
 
-
-
-
-
 '''a = df_repay[df_repay['LCR sheet Lookup'] == "Investments|Outflow|0"]
 a'''
-
-
-
-
-
-df_repay['LCR sheet Lookup'].value_counts()
-
-
-
-
-
-df_repay.columns
-
-
-
-
+#df_repay['LCR sheet Lookup'].value_counts()
+#df_repay.columns
 
 # Reorder the columns in the data frame
 
@@ -2392,34 +1782,12 @@ non_retail_row_250 = df_repay.pop('NON-RETAIL DEPOSIT ROW250')
 # Insert the 'ORIG_BAL_BEFORE_INT' column after the 'ACC_CRNCY' column
 df_repay.insert(df_repay.columns.get_loc('LCR sheet Lookup') + 1, 'NON-RETAIL DEPOSIT ROW250', non_retail_row_250)
 
-
-
-
-
 # Fill empty values with 0
 df_repay['NON-RETAIL DEPOSIT ROW250'].fillna(0, inplace=True)
-
-
-
-
-
-df_repay.head()
-
-
-
-
-
-df_repay['NON-RETAIL DEPOSIT ROW250'].value_counts()
-
-
-
-
+#df_repay.head()
+#df_repay['NON-RETAIL DEPOSIT ROW250'].value_counts()
 
 #df_repay.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/December Validation/December-23/test_repay_28thFeb.csv', index = False)
-
-
-
-
 
 '''# =IFERROR(VLOOKUP(H5,'Lombard FSCS'!$D:$AK,34,0),0)
 # Create a mapping dictionary from 'ACC_NUMBER' to 'NON-RETAIL DEPOSIT ROW250'
@@ -2430,10 +1798,6 @@ df_repay['NON-RETAIL DEPOSIT ROW250'] = df_repay['Deal Reference'].map(mapping_d
 
 # Fill empty values with 0
 df_repay['NON-RETAIL DEPOSIT ROW250'].fillna(0, inplace=True)'''
-
-
-
-
 
 # Create a dictionary to map LCR sheet Lookup values to LCR sheet no values
 LCR_shhet_mapping = {
@@ -2448,22 +1812,9 @@ LCR_shhet_mapping = {
     'Investments|Inflow|I' : '72'
     }
 
-
-
-
-
 # Apply the mapping to create the 'Type' column in df_repay
 df_repay['LCR sheet'] = df_repay['LCR sheet Lookup'].map(LCR_shhet_mapping)
-
-
-
-
-
-df_repay['LCR sheet'].value_counts()
-
-
-
-
+#df_repay['LCR sheet'].value_counts()
 
 # Addition of empty columns as disscussed
 df_repay['Row for 72'] = ''
@@ -2476,31 +1827,16 @@ df_repay['Row for74']= ''
 df_repay['LCR_Sheet_Row']= ''
 df_repay['Blank Column']= ''
 
-
-
-
-
-df_repay.info()
-
-
-
-
+#df_repay.info()
 
 # Condition to check if Sector Code is one of the specified values
 condition = df_repay['SECTOR CODE'].isin([3350, 3370, 4539])
 
 # Apply np.where to return 'YES' if condition is True, else 'NO'
 df_repay['FINANCIAL/NON-FINANCIAL'] = np.where(condition, 'YES', 'NO')
-
-
-
-
-
-df_repay['FINANCIAL/NON-FINANCIAL'].value_counts()
+#df_repay['FINANCIAL/NON-FINANCIAL'].value_counts()
 
 # Now since we have the values from the FSCS file placed in the truncated FSCS version which is merged with the Repay file we can directly go ahead and perform the remaining vlookup operations between the FSCS and Repay file.
-
-
 
 # Column INFLOW CATEGORY
 
@@ -2518,28 +1854,8 @@ def inflow_category (row):
     
 #Apply logic (inflow_category) to create the column INFLOW CATEGORY
 df_repay['INFLOW CATEGORY'] = df_repay.apply(inflow_category, axis=1)
-
-
-
-
-
-df_repay['INFLOW CATEGORY'].value_counts()
-
-
-
-
-
+#df_repay['INFLOW CATEGORY'].value_counts()
 #df_repay.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/December Validation/December-23/test_repay_29thFeb.csv', index = False)
-
-
-
-
-
-df_repay.info()
-
-
-
-
 
 # Column Exempt Deposits
 
@@ -2553,45 +1869,18 @@ def exempt_deposits(row):
     else:
         return "0"        
         
-
 #Apply logic (exempt_deposits) to create the column Exempt Deposits
 df_repay['Exempt Deposits'] = df_repay.apply(exempt_deposits, axis=1)
 # If there's no match, fill the 'Exempt Deposits' column with 0
 #df_repay['Exempt Deposits'].fillna(0, inplace=True)
 
-
-
-
-
 df_repay['INDIVIDUAL + SME'].isnull().sum()
-
-
-
-
 
 #=IFERROR(IF(VLOOKUP(B5,'Lombard FSCS'!$B$5:$AQ$113308,27,0)="NO","NON RETAIL Deposit","RETAIL"),"0")
 
-
-
-
-
-df_repay['INDIVIDUAL + SME'].value_counts()
-
-
-
-
-
-df_repay['Exempt Deposits'].value_counts()
-
-
-
-
-
-df_repay['Exempt Deposits'].isnull().sum()
-
-
-
-
+#df_repay['INDIVIDUAL + SME'].value_counts()
+#df_repay['Exempt Deposits'].value_counts()
+#df_repay['Exempt Deposits'].isnull().sum()
 
 # Create a function to apply the logic to get the column Investment Type from data frame FSCS
 
@@ -2603,16 +1892,7 @@ def get_investment_type(row):
 
 # Apply the function to create the 'cvb' column in df_repay
 df_repay['Investment Type from security'] = df_repay.apply(get_investment_type, axis=1)
-
-
-
-
-
-df_repay['Investment Type from security'].value_counts()
-
-
-
-
+#df_repay['Investment Type from security'].value_counts()
 
 # Column Investment Type
 
@@ -2624,16 +1904,7 @@ def investement_type (row):
     
 #Apply logic (investement_type) to create the column Investment Type
 df_repay['Investment Type'] = df_repay.apply(investement_type, axis=1)
-
-
-
-
-
-df_repay['Investment Type'].value_counts()
-
-
-
-
+#df_repay['Investment Type'].value_counts()
 
 # Column Original Maturity
 
@@ -2646,52 +1917,6 @@ def orig_maturity (row):
 #Apply logic (orig_maturity) to create the column Original Maturity
 df_repay['Original Maturity'] = df_repay.apply(orig_maturity, axis=1)
 
-
-
-
-
-#df_repay['Original Maturity'].value_counts()
-
-
-
-
-
-
-
-
-# '''# Add the dates to the repay file as separate columns'''
-
-
-
-
-'''# Add a new column named CASA_Notice_Acc_Date
-df_repay['CASA_Notice_Acc_Date'] = casa_excl_notice_acc_dt
-
-# Add the new column named Future Date
-df_repay['Future Date'] = future_date'''
-
-
-# '''# Convert the Dates in appropriate format so that the date columns can be worked'''
-
-
-
-
-'''# Convert column Future Date to datetime
-df_repay['Future Date'] = pd.to_datetime(df_repay['Future Date'], format='%d/%m/%Y')
-
-# Convert column CASA_Notice_Acc_Date to datetime
-df_repay['CASA_Notice_Acc_Date'] = pd.to_datetime(df_repay['CASA_Notice_Acc_Date'], format='%d/%m/%Y')
-
-# Convert column Interest Cash Flow Date to datetime
-df_repay['Interest Cash Flow Date'] = pd.to_datetime(df_repay['Interest Cash Flow Date'], format='%d-%m-%Y')
-
-# Convert column Repayment Date to datetime
-df_repay['Repayment Date'] = pd.to_datetime(df_repay['Repayment Date'], format='%d-%m-%Y')'''
-
-
-
-
-
 # Create new empty columns
 
 df_repay['Original Maturity'] ='Column Not Used in Calculation'
@@ -2699,10 +1924,6 @@ df_repay['Residual Maturity'] = 'Column Not Used in Calculation'
 df_repay['PROD ORIG MAT'] = 'Column Not Used in Calculation'
 df_repay['PROD RESI MAT'] = 'Column Not Used in Calculation'
 df_repay['C68 Eligibility'] = 'Column Not Used in Calculation'
-
-
-
-
 
 # Reorder the columns in the data frame to reorder the following column
 
@@ -2713,10 +1934,6 @@ individual_n_SME = df_repay.pop('INDIVIDUAL + SME')
 
 # Insert the 'INDIVIDUAL + SME' column after the 'C68 Eligibility' column
 df_repay.insert(df_repay.columns.get_loc('C68 Eligibility') + 1, 'INDIVIDUAL + SME', individual_n_SME)
-
-
-
-
 
 # Column LCR Period INT
 
@@ -2730,22 +1947,6 @@ def lcR_period_int (row):
 #Apply logic (lcR_period_int) to create the column LCR PERIOD INT
 df_repay['LCR PERIOD INT'] = df_repay.apply(lcR_period_int, axis=1)
 
-
-
-
-
-
-
-
-
-
-
-#df_repay['LCR PERIOD INT'].value_counts()
-
-
-
-
-
 # Column LCR PERIOD PRINCIPAL
 
 def lcR_period_principle (row):
@@ -2757,144 +1958,60 @@ def lcR_period_principle (row):
         return "NO"
 #Apply logic (lcR_period_principle) to create the column LCR PERIOD PRINCIPAL
 df_repay['LCR PERIOD PRINCIPAL'] = df_repay.apply(lcR_period_principle, axis=1)
-
-
-
-
-
-df_repay.info()
-
-
-
-
+#df_repay.info()
 
 # Drop the unwanted columns from the Repay file
 
 repay_col_to_drop = ['Current Date','Exchange Rate','condition_1', 'CUST_N_ACC_NUM','CUSTOMER_ID', 'ACC_NUMBER', 'CAT_1', 'LIAB_OUTF_CAT',
                      'Investment Type from security','CASA_Notice_Acc_Date','Future Date']
 df_repay = df_repay.drop(columns=repay_col_to_drop)
-
-
-
-
-
-df_repay.head(5)
-
-
-
-
+#df_repay.head(5)
 
 #df_repay.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/December Validation/December-23/test_repay_29thFeb1.csv', index = False)
 
 
 # # SecurityPortfolio
 
-
-
-
 # Create a copy of the Securityportfolio
 df_securityportfolio_copy = df_securityportfolio.copy()
 
-
-
-
-
-df_securityportfolio_copy.columns
-
+#df_securityportfolio_copy.columns
 
 # The security Portfolio file comes in with an additional row  of data at the bottom which is not required for the calculation purpose.
 # Thus this row needs to be searched based on the logic below and eliminated from the file/ data frame.
 
-
-
-
 # Find rows containing the phrases and create a boolean mask
 mask = df_securityportfolio_copy['Book Value'].str.contains('Total Face Value in USD|Total Book Value in USD', case=False, na=False)
 
-
 # Use the boolean mask to filter and keep rows that do not contain the phrases
 df_securityportfolio_copy = df_securityportfolio_copy[~mask]
-
-
-
-
-
-df_securityportfolio_copy
-
-
-
-
+#df_securityportfolio_copy
 
 security_col_to_drop = ['Moodys Rating', 'Fitch Rating','SnP Rating', 'Average Purchase Price', 
                         'Market Price','MTM_USD','Coupon Rate','Appreciation Depreciation in USD', 
                         'percentage change in price','Modified Duration', 'MTM_MD_USD', 'PV01', 
                         'EOD Date', 'YTM']
 df_securityportfolio_copy = df_securityportfolio_copy.drop(columns=security_col_to_drop)
-
-
-
-
-
-df_securityportfolio_copy.columns
-
-
-
-
-
-df_securityportfolio_copy.info()
-
-
-
-
-
+#df_securityportfolio_copy.columns
+#df_securityportfolio_copy.info()
 #df_securityportfolio_copy.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/28.09.2023/fx.csv', index = False)
 
 
 # # Logic for Pivot Security
 
-
-
-
 # Group the DataFrame by 'Product Type' and calculate the sum of 'Market Value CCY' and MTM GBP
 Pivot_Security = df_security.groupby('Product Type').agg({'MTM GBP': 'sum', 'Market Value CCY': 'sum'}).reset_index()
-
-
-
-
-
-Pivot_Security
-
-
-
-
+#Pivot_Security
 
 # Merge df_securityportfolio_copy with Pivot_Security on 'Deal Num' and 'Product Type'
 df_securityportfolio_copy = df_securityportfolio_copy.merge(Pivot_Security, left_on='Deal Num', right_on='Product Type', how='left')
-
-
-
-
-
-df_securityportfolio_copy.columns
-
-
-
-
+#df_securityportfolio_copy.columns
 
 # Rename the columns as per the convience
 
 # Rename the 'MTM GBP' column to 'Market Price GBP' and column  'Market Value CCY' to 'Market Price CCY'in df_securityportfolio_copy
 df_securityportfolio_copy.rename(columns={'MTM GBP': 'Market Price GBP', 'Market Value CCY': 'Market Price CCY'}, inplace=True)
-
-
-
-
-
 #df_securityportfolio_copy.columns
-
-
-
-
 
 # Create a dictionary mapping 'Product Type' to 'HQ Indicator'
 type_to_hq = df_security.set_index('Product Type')['HQ Indicator'].to_dict()
@@ -2904,28 +2021,10 @@ df_securityportfolio_copy['HQLA Indicator'] = df_securityportfolio_copy['Deal Nu
 
 # Fill empty cells with 0
 df_securityportfolio_copy['HQLA Indicator'] = df_securityportfolio_copy['HQLA Indicator'].fillna('0')
-
-
-
-
-
-df_securityportfolio_copy['HQLA Indicator'].value_counts()
-
-
-
-
-
-df_securityportfolio_copy.info()
-
-
-
-
+#df_securityportfolio_copy['HQLA Indicator'].value_counts()
+#df_securityportfolio_copy.info()
 
 df_securityportfolio_copy['Book Value'] = df_securityportfolio_copy['Book Value'].astype(float) 
-
-
-
-
 
 # Merge the DataFrames on 'Scrip Currency' and Currency Code'
 df_securityportfolio_copy = df_securityportfolio_copy.merge(df_exch, left_on='Scrip Currency', right_on='Currency Code', how='left')
@@ -2933,24 +2032,11 @@ df_securityportfolio_copy = df_securityportfolio_copy.merge(df_exch, left_on='Sc
 # Drop the unwanted column Currency Code
 df_securityportfolio_copy = df_securityportfolio_copy.drop('Currency Code', axis =1)
 
-
-
-
-
 # Column BV GBP
 df_securityportfolio_copy['BV GBP'] = df_securityportfolio_copy['Book Value']/ df_securityportfolio_copy['Exchange Rate']
 
 df_securityportfolio_copy['BV GBP'] = df_securityportfolio_copy['BV GBP'].round(2)
-
-
-
-
-
-df_securityportfolio_copy['BV GBP'].sum()
-
-
-
-
+#df_securityportfolio_copy['BV GBP'].sum()
 
 '''def bv_gbp(row):
     if row['Scrip Currency'] == 'GBP':
@@ -2963,10 +2049,6 @@ df_securityportfolio_copy['BV GBP'].sum()
 #Apply logic (bv_gbp) to create the column BV GBP
 df_securityportfolio_copy['BV GBP'] = df_securityportfolio_copy.apply(bv_gbp, axis=1)'''
 
-
-
-
-
 # Column NSFR VALUE GBP
 def nsfr_val_gbp(row):
     if row ['Portfolio'] == "HTM":
@@ -2977,15 +2059,7 @@ def nsfr_val_gbp(row):
 #Apply logic (nsfr_val_gbp) to create the column NSFR VALUE GBP
 df_securityportfolio_copy['NSFR VALUE GBP'] = df_securityportfolio_copy.apply(nsfr_val_gbp, axis=1)
 
-
-
-
-
 df_securityportfolio_copy['NSFR VALUE GBP'].sum().round(2)
-
-
-
-
 
 # Column NSFR VALUE CCY
 def nsfr_val_ccy(row):
@@ -2997,53 +2071,24 @@ def nsfr_val_ccy(row):
 #Apply logic (nsfr_val_ccy) to create the column NSFR VALUE CCY
 df_securityportfolio_copy['NSFR VALUE CCY'] = df_securityportfolio_copy.apply(nsfr_val_ccy, axis=1)
 
-
-
-
-
 df_securityportfolio_copy['NSFR VALUE CCY'].sum().round(2)
 
-
-
-
-
 df_securityportfolio_copy = df_securityportfolio_copy.drop(columns = ['Product Type','Exchange Rate'])
-
-
-
-
-
-df_securityportfolio_copy.info()
-
+#df_securityportfolio_copy.info()
 
 # # Limit File
 
-
-
-
-print('Limit File Info:', df_limit.info())
-print('Limit File columns:', df_limit.columns)
-
-
-
-
+#print('Limit File Info:', df_limit.info())
+#print('Limit File columns:', df_limit.columns)
 
 # Merge the DataFrames on 'Scrip Currency' and Currency Code' to get the Exchange Rates
 df_limit = df_limit.merge(df_exch, left_on='Currency Code', right_on='Currency Code', how='left')
-
-
-
-
 
 # Create a copy of customer data frame
 df_cust_copy = df_cust.copy() 
 
 # Check the columns in the copied data frame
 df_cust_copy.columns
-
-
-
-
 
 # Truncate df_cust_copy to have important columns
 drop_columns = ['Branch id', 'Customer Name','Risk Code', 'Incorporation Code', 'Industry Code','Connected Code', 'Deposit Guarantee Scheme',
@@ -3059,55 +2104,23 @@ drop_columns = ['Branch id', 'Customer Name','Risk Code', 'Incorporation Code', 
 
 df_cust_copy = df_cust_copy.drop(columns=drop_columns)
 
-#df_cust_copy.info()
-
-
-
-
-
 # Convert the data dtype of the column Customer Identifier to string  
 df_cust_copy['Customer Identifier'] = df_cust_copy['Customer Identifier'].astype(str)
 
 # Convert the data type of the column Customer Identifier to string
 df_limit['Customer Identifier'] = df_limit['Customer Identifier'].astype(str)
 
-
-
-
-
 #merge the dataframe df_cust_copy and df_limit
 # Merge the DataFrames on 'Customer Identifier' and Customer Identifier 
 df_limit = df_limit.merge(df_cust_copy, left_on='Customer Identifier', right_on='Customer Identifier', how='left')
 
-
-
-
-
 # Conert the data type of the column Sector Code to int
 df_limit['Sector Code'] = df_limit['Sector Code'].astype(int)
-
-
-
-
-
-df_limit.isnull().sum()
-
-
-
-
+#df_limit.isnull().sum()
 
 # Add a new column named Future Date
 df_limit['Future Date'] = future_date
-
-
-
-
-
-df_limit.info()
-
-
-
-
+#df_limit.info()
 
 # Convert all the date related columns to the date and time format
 
@@ -3120,18 +2133,10 @@ df_limit['Maturity Date'] = pd.to_datetime(df_limit['Maturity Date'], format='%d
 # Column Future Date to the Date and time format
 df_limit['Future Date'] = pd.to_datetime(df_limit['Future Date'], format='%d/%m/%Y')
 
-
-
-
-
 # Column Drawn amount CCY
 # Add the column Drawn amount CCY by performing the subtraction operation on 2 columns 
 df_limit['Drawn amount CCY'] = df_limit['Facility Amount'] - df_limit['Undrawn Amount']
 df_limit['Drawn amount CCY'] = df_limit['Drawn amount CCY'].round(2)
-
-
-
-
 
 # Column Drawn amount GBP
 
@@ -3140,10 +2145,6 @@ df_limit['Drawn amount GBP'] = df_limit['Drawn amount CCY']/ df_limit['Exchange 
 # round down the column to 2 decimal points
 df_limit['Drawn amount GBP'] = df_limit['Drawn amount GBP'].round(2)
 
-
-
-
-
 # Column Undrawn GBP
 df_limit['Undrawn GBP'] = df_limit['Undrawn Amount']/ df_limit['Exchange Rate']
 
@@ -3151,51 +2152,8 @@ df_limit['Undrawn GBP'] = df_limit['Undrawn Amount']/ df_limit['Exchange Rate']
 df_limit['Undrawn GBP'] = df_limit['Undrawn GBP'].round(2)
 
 
-
-
-
-#df_limit.head()
-
-
-
-
-
-'''def gbp_amt_drawn(row):
-    if row['Currency Code'] == "USD":
-        return round (row['Drawn amount CCY']/ exch_usd['Exchange Rate'], 2).values[0]
-    elif row['Currency Code'] == "EUR":
-        return round (row['Drawn amount CCY']/ exch_EUR['Exchange Rate'], 2).values[0]
-    elif row['Currency Code'] == "GBP":
-        return round (row['Drawn amount CCY'],2)
-    
-#Apply logic (gbp_amt_drawn) to create the column Drawn amount GBP
-df_limit['Drawn amount GBP'] = df_limit.apply(gbp_amt_drawn, axis=1)'''
-
-
-
-
-
-'''def undrawn_gbp(row):
-    if row['Currency Code'] == "USD":
-        return round (row['Undrawn Amount']/ exch_usd['Exchange Rate'], 2).values[0]
-    elif row['Currency Code'] == "EUR":
-        return round (row['Undrawn Amount']/ exch_EUR['Exchange Rate'], 2).values[0]
-    elif row['Currency Code'] == "GBP":
-        return round (row['Undrawn Amount'],2)
-    
-#Apply logic (undrawn_gbp) to create the column Undrawn GBP
-df_limit['Undrawn GBP'] = df_limit.apply(undrawn_gbp, axis=1)'''
-
-
-
-
-
 # Add an empty column Scheme Code to the data frame
 df_limit[' Scheme code '] = ''
-
-
-
-
 
 # Column LCR Row
 
@@ -3207,16 +2165,7 @@ def lcr_row(row):
 
 #Apply logic (lcr_row) to create the column LCR ROW
 df_limit['LCR ROW'] = df_limit.apply(lcr_row, axis=1)
-
-
-
-
-
-df_limit['LCR ROW'].value_counts()
-
-
-
-
+#df_limit['LCR ROW'].value_counts()
 
 # Column LCR PERIOD
 
@@ -3228,22 +2177,7 @@ def lcr_period (row):
     
 #Apply logic (lcr_period) to create the column LCR PERIOD
 df_limit['LCR PERIOD'] = df_limit.apply(lcr_period, axis=1)
-
-
-
-
-
-df_limit['LCR PERIOD'].value_counts()
-
-
-
-
-
-df_limit.head(3)
-
-
-
-
+#df_limit['LCR PERIOD'].value_counts()
 
 # Drop the 'Sector Code' column
 # The pop () method is used to remove the 'Sector Code' column from the DataFrame and save its values.
@@ -3251,28 +2185,7 @@ secotr_code = df_limit.pop('Sector Code')
 
 # Insert the 'Sector Code' column after the 'ACC_CRNCY' column
 df_limit.insert(df_limit.columns.get_loc('LCR PERIOD') + 1, 'Sector Code', secotr_code)
-
-
-
-
-
-df_limit.head(2)
-
-
-
-
-
-df_limit['Sector Code'].value_counts()
-
-
-
-
-
-
-
-
-
-
+#df_limit['Sector Code'].value_counts()
 
 # Column FINANCIAL CUSTOMER
 
@@ -3284,66 +2197,23 @@ def cust_info(row):
 
 #Apply logic (cust_info) to create the column FINANCIAL CUSTOMER
 df_limit['FINANCIAL CUSTOMER'] = df_limit.apply(cust_info, axis=1)
-
-
-
-
-
-df_limit['FINANCIAL CUSTOMER'].value_counts()
-
-
-
-
+#df_limit['FINANCIAL CUSTOMER'].value_counts()
 
 drop_col = ['Exchange Rate', 'Future Date','Residency Code']
 df_limit = df_limit.drop(columns=drop_col) 
-
-
-
-
-
-df_limit.info()
+#df_limit.info()
 
 
 # # GL Bal File
 
-
-
-
-df_glbal.info()
-
-
-
-
-
 # Merge the DataFrames on 'Currency Code'
 df_glbal = df_glbal.merge(df_exch, left_on='Currency Code', right_on='Currency Code', how='left')
-
-
-
-
-
-df_glbal.columns
-
-
-
-
-
-df_glbal
-
-
-
-
 
 # Column AMT GBP
 df_glbal['AMT GBP'] = df_glbal['Amount CCY'] / df_glbal['Exchange Rate']
 
 # Round down the column upto 2 decimal poitns
 df_glbal['AMT GBP'] = df_glbal['AMT GBP'].round(2)
-
-
-
-
 
 def glbal_LCR_row (row): 
     if row ['GL NUMBER'] == "12030" and row['Acct NUMBER'] != "61198261203016":
@@ -3354,76 +2224,18 @@ def glbal_LCR_row (row):
 #Apply logic (glbal_LCR_row) to create the column LCR ROW
 df_glbal['LCR ROW'] = df_glbal.apply(glbal_LCR_row, axis=1)
 
-
-
-
-
 df_glbal['GL NUMBER'] = df_glbal['GL NUMBER'].astype(str)
 
-
-
-
-
 df_glbal['TEXT GL NUMBER'] = df_glbal['GL NUMBER'].str[0]
-
-
-
-
-
-df_glbal['LCR ROW'].value_counts()
-
-
-
-
+#df_glbal['LCR ROW'].value_counts()
 
 #columns_to_drop = ['Exchange Rate']
 df_glbal = df_glbal.drop('Exchange Rate', axis = 1)
-
-
-
-
-
-df_glbal.columns
-
-
-
-
-
-df_repay.columns
-
-
-
-
-
-df_glbal['CIF ID'].isnull().value_counts()
-
-
-
-
+#df_glbal['CIF ID'].isnull().value_counts()
 
 #df_glbal.to_csv('filtered_glbal.csv')
 
-
-
-
-
-
-
-
-
-
-
 #df_glbal.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/New folder/trial/July Liquidity File/Redis Files/trial.csv', index = False)
-
-
-
-
-
-
-
-
-
-
 
 # Get user input for the parent folder
 destination_folder = input("Enter the parent folder path: ")
@@ -3750,7 +2562,7 @@ hours, rem = divmod(LCR_completion_time, 3600)
 minutes, seconds = divmod(rem, 60)
 
 # Display the time taken
-print("Time taken: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
+print("Time taken for LCR File Completion: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
 
 
 # # Capital Dashboard Calculation Start #
@@ -4516,18 +3328,18 @@ def filter_and_process(df):
     # Step 12: Update 'A/L' based on GL codes
     gl_sub_head_codes_A = [10010, 12030, 12261, 14060, 16050, 16250, 21000, 21010, 21040,
                            21510, 21520, 26000, 26010, 27000, 27010, 27040, 27050, 27070,
-                           27100, 27143, 38060, 38070, 54000, 54060, 58000, 89010, 52010,
-                           52030, 52040, 52070, 53000]
+                           27100, 27143, 28030, 38060, 38070, 54000, 54060, 58000, 89010,
+                           52010, 52030, 52040, 52070, 53000]
     Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'].isin(gl_sub_head_codes_A), 'A/L'] = 'A'
 
     gl_sub_head_codes_L = [30000, 31000, 34000, 36000, 36020, 36060, 36070, 38000, 38010,
                            38030, 38040, 42000, 42010, 42610, 46050, 52010, 52030, 52040,
-                           52070, 53000, 54010, 54020, 54050, 59000, 60000, 62000, 62010,
-                           62020, 62030, 62040, 62060, 62070, 62080, 62090, 62100, 62110,
-                           63000, 63030, 64010, 64020, 64040, 64050, 64060, 64200, 64210,
-                           64300, 65000, 70000, 70030, 70050, 70060, 74020, 76000, 76010,
-                           76010, 76030, 76040, 76045, 76090, 76120, 76200, 78010, 78040,
-                           78050]
+                           52070, 53000, 54010, 54020, 54050, 55030, 55050, 59000, 60000,
+                           62000, 62010, 62020, 62030, 62040, 62060, 62070, 62080, 62090,
+                           62100, 62110, 63000, 63030, 64010, 64020, 64040, 64050, 64060,
+                           64200, 64210, 64300, 65000, 70000, 70030, 70050, 70060, 74020,
+                           76000, 76010, 76010, 76030, 76040, 76045, 76090, 76120, 76200,
+                           78010, 78040, 78050]
     Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'].isin(gl_sub_head_codes_L), 'A/L'] = 'L'
 
     # Step 13: Check for OD accounts and allocate 'A' or 'L'
@@ -4831,7 +3643,7 @@ def principal_amt_calc(row):
     if row['Currency'] != 'GBP':
         return round (row['Amount Currency'] / row['Exchange Rate'], 2)
     else:
-        return (row['Amount Currency']).round(2)
+        return round(row['Amount Currency'],2)
 # Apply the  function  to create a new column
 capital_df_loandep['Principal Amount (GBP)'] = capital_df_loandep.apply(principal_amt_calc, axis=1)
 
@@ -5616,108 +4428,3 @@ lcr_minutes, lcr_seconds = divmod(rem, 60)
 
 # Display the time taken
 print("Time taken for LCR File: {:0>2}:{:0>2}:{:05.2f}".format(int(lcr_hours), int(lcr_minutes), lcr_seconds))
-
-'''import xlwings as xw
-
-def write_exch_to_worksheet(wb, sheet_name, date_obj, df_exch):
-    """
-    Enter a date in cell A1 of the specified worksheet, clear values in column C starting from row 6,
-    and paste values from the 'Exchange Rate' column of df_exch to the cleared range.
-
-    Args:
-    wb (xlwings.Book): Excel workbook object.
-    sheet_name (str): Name of the worksheet where operations will be performed.
-    date_obj (datetime.datetime): Date object to be entered in cell A1.
-    df_exch (pd.DataFrame): DataFrame containing the 'Exchange Rate' column data.
-
-    Returns:
-    None
-    """
-    # Select the worksheet
-    ws_exch = wb.sheets[sheet_name]
-
-    try:
-        # Write the date to cell A1 of the worksheet
-        ws_exch.range('A1').value = date_obj
-        print("Date successfully entered in cell A1.")
-
-        # Get the range starting from row 6 in column C
-        start_row = 6
-        start_column = 3  # Column C
-        end_row = ws_exch.api.Rows.Count
-        range_to_clear = ws_exch.range((start_row, start_column), (end_row, start_column))
-
-        # Clear the contents of the range
-        range_to_clear.clear_contents()
-        print("Values cleared from column C starting from row 6.")
-
-        # Calculate the end row based on the DataFrame size
-        end_row_df = start_row + len(df_exch)
-
-        # Write the 'Exchange Rate' column values to the worksheet
-        ws_exch.range((start_row, start_column)).value = df_exch['Exchange Rate'].values
-        print(f"Exchange rates pasted from row {start_row} to {end_row_df - 1} in column C.")
-    except Exception as e:
-        print(f"Error: {e}")
-
-# Example usage:
-# Assuming capital_file_wb is your Excel workbook object, date_obj is the datetime object, and df_exch is your DataFrame
-# capital_file_wb = xw.Book("path/to/your/file.xlsx")
-# date_obj = datetime.datetime(2024, 4, 11)
-# df_exch = ...
-
-# Call the function
-# write_exch_to_worksheet(capital_file_wb, "Date_ExchRates", date_obj, df_exch)'''
-
-
-
-
-
-'''# Select the worksheet named "Lombard Repay"
-ws_security = capital_file_wb.sheets["Lombard Security"]
-
-# Get the range starting from the 5th row
-start_row = 5
-start_column = 1  # Assuming you want to start from the first column
-end_row = ws_security.api.Rows.Count
-end_column = 72
-range_to_clear = ws_security.range((start_row, start_column), (end_row, end_column))
-
-# Clear the contents of the range
-range_to_clear.clear_contents()
-
-capital_df_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB Flag', 'Deal Reference',
-                                   'Investment Type', 'Trading Indicator', 'Encumbered Flag', 'Currency',
-                                   'Nominal Amount CCY', 'Principal Amount CCY', 'Market Value CCY', 'MTM',
-                                   'Coupon Rate', 'Accrued Interest CCY', 'Start Date', 'Maturity Date',
-                                   'Settlement Date', 'Fxd Flt Indicator', 'Next Reset Date','Security ID',
-                                   'LAB Indicator', 'HQ Indicator','Senior Tranche Indicator', 'Issued/purchased flag',
-                                   'USGS Indicator','LTST Indicator', 'Own Funds Indicator', 'Own Funds Amount',
-                                   'Rehypothetication Indicator', 'Watch List Indicator','Default Indicator',
-                                   'LCR Government Protected Indicator','LCRGteeIntOrgID', 'LCRIntOrgID',
-                                   'LCRRequirementsMet','LiquidAssetQualityType', 'LiquidFacilityType', 'Notional Amount',
-                                   'OtherLCRLiabilities', 'OtherTransAssets', 'Short Term Moody',
-                                   'Long Term Moody', 'Short Term Fitch', 'Long Term Fitch','Short Term S P',
-                                   'Long Term S P', 'Purchase Cost', 'Purchase Price','Risk Weight', 'PD external',
-                                   'LGD External', 'PD Internal','LGD INTERNAL', 'MTM GBP', 'Principle GBP','Book Value GBP',
-                                   'Residual Maturity Days','Sector Code','Category','Moodys Number', 'Fitch Number',
-                                   'S&P Number','Final Rating', 'Final Letter Rating', 'CQS','Incorporation Code',
-                                   'Corporate / Institution', 'Investment Combo','RW', 'Customer Name']]
-
-# Write the data (excluding headers) to the worksheet
-ws_security.range("A5").value = capital_df_security.values
-
-# Assuming ws_security is the worksheet containing the pivot table
-pivot_table_name = "PivotTable1"  # Adjust with the actual pivot table name
-
-# Get the pivot table object
-pivot_table = ws_security.api.PivotTables(pivot_table_name)
-
-# Refresh the pivot table
-pivot_table.RefreshTable()
-'''
-
-'''# Find rows that are duplicates across all columns
-duplicate_rows = df_security[df_security.duplicated(keep=False)]
-duplicate_rows'''
-
