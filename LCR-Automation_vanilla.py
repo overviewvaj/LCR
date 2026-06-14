@@ -3471,8 +3471,8 @@ Assets['ACCT NUMBER'] = Assets['ACCT NUMBER'].astype('int64')
 acct_nums_to_replace = [
     61198261406001, 61198401406001, 61198401406002, 61198261406002, 61198262805002,
     61198402805008, 61198402805002, 61198262805008, 61198405406001, 61198265406001,
-    61198265507010, 61198405507010, 61198405507001, 61198265507001, 61198265507004,
-    61199785507007, 61198401605001, 61198401625001, 61198262805006
+    61198265507010, 61198405507010, 61198405507001, 61198265507001, 61198401605001, 
+    61198401625001, 61198262805006
 ]
 
 # Condition to check for the account numbers to replace
@@ -3662,15 +3662,7 @@ def replace_and_sum_assets(Assets, trunc_df_frp_acc):
 Assets = replace_and_sum_assets(Assets, trunc_df_frp_acc)
 
 
-
-
-
-
-
 trunc_df_frp_acc.info()
-
-
-
 
 
 #Assets.columns
@@ -3679,67 +3671,29 @@ trunc_df_frp_acc.info()
 # ### MM Placements File (Loand Dep)
 
 
-
-
 #df_repay.head(5)
 
 
-
-
-
-df_loandep.head(5)
-
-
-
-
+#df_loandep.head(5)
 
 # Filter the DataFrame based on the conditions
 capital_df_loandep = df_loandep[~df_loandep['Product ID'].isin(['LAA', 'TDA'])]
 
-
-
-
-
-capital_df_loandep.info()
-
-
-
+#capital_df_loandep.info()
 
 
 # Convert the Date columns to date time format
 capital_df_loandep['Start Date'] = pd.to_datetime(capital_df_loandep['Start Date'], dayfirst=True)
 capital_df_loandep['Maturity Date'] = pd.to_datetime(capital_df_loandep['Maturity Date'], dayfirst=True)
-
-
-
-
-
-capital_df_loandep.info()
-
-
-
-
+#capital_df_loandep.info()
 
 # Merge the DataFrames on 'Currency Code'
 capital_df_loandep = capital_df_loandep.merge(df_exch, left_on='Currency', right_on='Currency Code', how='left')
 
-
-
-
-
 # Drop the column Currency code
 columns_to_drop = ['Currency Code']
 capital_df_loandep = capital_df_loandep.drop(columns=columns_to_drop)
-
-
-
-
-
-capital_df_loandep.info()
-
-
-
-
+#capital_df_loandep.info()
 
 # Define the comparison function
 def get_deal_status(start_date, date_obj):
@@ -3747,16 +3701,7 @@ def get_deal_status(start_date, date_obj):
 # Apply the function to create the 'Deal Status' column
 capital_df_loandep['Deal Status'] = capital_df_loandep.apply(lambda row: get_deal_status(row['Start Date'], date_obj), axis=1)
 
-
-
-
-
 #capital_df_loandep['Deal Status']
-
-
-
-
-
 # Coulumnd Principle Amount (GBP)
 
 def principal_amt_calc(row):
@@ -3766,10 +3711,6 @@ def principal_amt_calc(row):
         return round(row['Amount Currency'],2)
 # Apply the  function  to create a new column
 capital_df_loandep['Principal Amount (GBP)'] = capital_df_loandep.apply(principal_amt_calc, axis=1)
-
-
-
-
 
 # Column Borrowing/Placement#
 
@@ -3783,14 +3724,7 @@ def borrow_place(row):
 capital_df_loandep['Borrowing/PLacement'] = capital_df_loandep.apply(borrow_place, axis=1)
 
 
-
-
-
 capital_df_loandep['Residual Maturity Days'] = (capital_df_loandep['Maturity Date'] - date_obj).dt.days
-
-
-
-
 
 def categorize_rwmmp(row):
     if row['Residual Maturity Days'] > 90:  # Greater than 90 days
@@ -3800,16 +3734,7 @@ def categorize_rwmmp(row):
 
 # Apply the categorization function to create a new column
 capital_df_loandep['RW_MMP'] = capital_df_loandep.apply(categorize_rwmmp, axis=1)
-
-
-
-
-
-capital_df_loandep
-
-
-
-
+#capital_df_loandep
 
 def calculate_rw_exposure(row):
     return row['Principal Amount (GBP)'] * row['RW_MMP']
@@ -3817,30 +3742,14 @@ def calculate_rw_exposure(row):
 # Apply the function to create a new column 'RW_EXPOSURE'
 capital_df_loandep['RW_EXPOSURE'] = capital_df_loandep.apply(calculate_rw_exposure, axis=1)
 
-
-
-
-
 def calculate_rw_capital(row):
     return row['RW_EXPOSURE'] * 0.08
 
 # Apply the function to create a new column 'RW_EXPOSURE'
 capital_df_loandep['REQ_Capital'] = capital_df_loandep.apply(calculate_rw_capital, axis=1)
 
-
-
-
-
 capital_df_loandep['ORG Maturity Days'] = (capital_df_loandep['Maturity Date'] - capital_df_loandep['Start Date']).dt.days
-
-
-
-
-
-capital_df_loandep.columns
-
-
-
+#capital_df_loandep.columns
 
 
 # Reorder/ Restructre the data frame by keeping only required/essential columns in the dataframe
@@ -3850,19 +3759,77 @@ capital_df_loandep = capital_df_loandep[['Deal Reference', 'Cif id ','Currency',
                                          'Borrowing/PLacement', 'RW_MMP', 'RW_EXPOSURE', 'REQ_Capital',
                                          'ORG Maturity Days', 'Residual Maturity Days']]
 
-
-
-
-
 #capital_df_loandep.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/calpitalLoandep1.csv', index = False)
 
 
 # ### Pipeline Tab
 
+def read_and_process_pipeline_file(parent_folder):
+    """
+    Read specific worksheets from the Excel file in the specified parent folder,
+    filter the data, perform necessary calculations, and save the result as a CSV file.
 
+    Args:
+    parent_folder (str): Path of the parent folder.
 
+    Returns:
+    pd.DataFrame: Processed DataFrame containing pipeline data.
+    """
+    # Find the file matching the specified pattern
+    file_pattern = os.path.join(parent_folder, 'Pipeline Summary Report*.xlsx')
+    file_list = glob.glob(file_pattern)
 
-def read_dependency_coding_file(parent_folder):
+    if len(file_list) == 0:
+        print("No matching Excel file found.")
+        return None
+
+    # Assuming there's only one matching file, use the first one in the list
+    file_path = file_list[0]
+
+    # Use xlwings to load the Excel file
+    app = xw.App(visible=False)  # Create an Excel app instance (hidden)
+    wb = app.books.open(file_path)  # Open the Excel file
+
+    # Initialize DataFrame for the worksheet
+    df_pipeline = None
+
+    # Loop through each worksheet and load data into respective DataFrame
+    for sheet in wb.sheets:
+        if sheet.name == 'Case Summary':
+            df_pipeline = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+
+    wb.close()  # Close the workbook
+    app.quit()  # Quit the Excel app
+
+    if df_pipeline is not None:
+        print("Pipeline data loaded successfully.")
+
+        # Filter the data frame to have only Legals Instructed and COT Received
+        df_pipeline = df_pipeline[df_pipeline['Application Stage'].isin(['Legals Instructed', 'COT Received'])]
+
+        # Perform the necessary calculations
+        df_pipeline['CCF'] = 0.2
+        df_pipeline['RW'] = 0.35
+        df_pipeline['Exposure Post CCF'] = df_pipeline['Advance'] * df_pipeline['CCF']
+        df_pipeline['RWA'] = df_pipeline['Exposure Post CCF'] * df_pipeline['RW']
+
+        # Define the output CSV file path
+        output_csv_path = os.path.join(parent_folder, 'BTL Pipeline.csv')
+
+        # Save the DataFrame to CSV
+        df_pipeline.to_csv(output_csv_path, index=False)
+
+        print(f"Pipeline data saved successfully to {output_csv_path}.")
+        return df_pipeline
+    else:
+        print("Error in loading Pipeline data.")
+        return None
+
+# Usage
+#parent_folder = 'path_to_your_parent_folder'
+df_pipeline = read_and_process_pipeline_file(parent_folder)
+
+'''def read_dependency_coding_file(parent_folder):
     """
     Read specific worksheets from the Excel file in the specified parent folder.
 
@@ -3918,45 +3885,23 @@ if df_pipeline is not None:
 else:
     print("Error in loading Pipeline data.")
 
+#df_pipeline
 
 
-
-
-df_pipeline
-
-
-
-
-
-df_pipeline.columns
-
-
-
-
+#df_pipeline.columns
 
 # Filter the data frame to have only Legals Instruceted And COT received
 df_pipeline = df_pipeline[df_pipeline['Application Stage'].isin(['Legals Instructed', 'COT Received'])]
-
-
-
-
 
 df_pipeline['CCF'] = 0.2
 df_pipeline['RW'] = 0.35
 df_pipeline['Exposure Post CCF'] = df_pipeline['Advance']*0.2
 df_pipeline['RWA'] = df_pipeline['Advance']*0.2*0.35
 
-
-
-
-
 #df_pipeline.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/trial.csv', index = False)
-
+'''
 
 # ### Account Balance File
-
-
-
 
 def update_accbal_values(df_accbal):
     """
@@ -3987,9 +3932,6 @@ def update_accbal_values(df_accbal):
 filtered_df_accbal = update_accbal_values(df_accbal)
 
 
-
-
-
 capital_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB Flag', 'Deal Reference',
                                    'Investment Type', 'Trading Indicator', 'Encumbered Flag', 'Currency',
                                    'Nominal Amount CCY', 'Principal Amount CCY', 'Market Value CCY', 'MTM',
@@ -4015,11 +3957,6 @@ capital_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB F
 # Group the DataFrame by 'Product Type' and calculate the sum of 'Balance BILR'
 #az = capital_security.groupby('Product Type')['Book Value GBP'].sum().reset_index()
 #az
-
-
-
-
-
 
 
 
@@ -4431,6 +4368,39 @@ except ValueError:
     
     
 After this delete the values from column C starting from row 6'''
+
+
+def write_df_pipeline_to_worksheet(ws, start_row=4, start_column=1):
+    """
+    Clear the contents of a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to clear.
+    start_row (int): Starting row for clearing data. Default is 6.
+    start_column (int): Starting column for clearing data. Default is 1.
+
+    Returns: the new values from data frame capital_df_loandep
+    None
+    """
+    # Get the last used row and column
+    last_row = ws.cells.last_cell.row
+    last_column = ws.cells.last_cell.column
+
+    # Get the range starting from the specified row and column to the last row and column
+    range_to_clear = ws.range((start_row, start_column), (last_row, last_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = df_pipeline.values
+
+# Example usage:
+# Assuming ws_MMP is the worksheet named "BTL Pipeline"
+ws_btl_pipeline = capital_file_wb.sheets["BTL Pipeline"]
+
+# Clear the worksheet starting from the 6th row across all columns
+write_df_pipeline_to_worksheet(ws_btl_pipeline)
 
 
 def write_exch_to_worksheet(wb, sheet_name, date_obj, df_exch):
