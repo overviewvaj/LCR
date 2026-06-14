@@ -2605,7 +2605,7 @@ merged_df.drop(columns='Account Number', inplace=True)
 
 # Now, merged_df contains the updated values where applicable
 
-# Assign it back to df_loandep if needed
+# Assign it back to df_limit if needed
 df_limit = merged_df
 
 # Define a custom function to apply the logic
@@ -2692,7 +2692,7 @@ merged_df.drop(columns='Customer Identifier', inplace=True)
 
 # Now, merged_df contains the updated values where applicable
 
-# Assign it back to df_loandep if needed
+# Assign it back to df_security if needed
 df_security = merged_df
 
 #df_security.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/security.csv', index = False)
@@ -3082,7 +3082,7 @@ def filter_and_process(df):
     # Step 12: Update 'A/L' based on GL codes
     gl_sub_head_codes_A = [10010, 12030, 12261, 14060, 16050, 16250, 21000, 21010, 21040,
                            21510, 21520, 26000, 26010, 27000, 27010, 27040, 27050, 27070,
-                           27100, 27143, 28020, 28030, 38060, 38070, 54000, 54060, 58000,89010,
+                           27100, 27143, 28020, 28030, 38060, 38070, 54000, 54060, 58000,
                            52010, 52030, 52040, 52070, 53000]
     Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'].isin(gl_sub_head_codes_A), 'A/L'] = 'A'
 
@@ -3411,7 +3411,6 @@ Assets = replace_and_sum_assets(Assets, trunc_df_frp_acc)
 
 
 #df_repay.head(5)
-
 
 #df_loandep.head(5)
 
