@@ -4,6 +4,8 @@
 import pandas as pd
 import os
 import re
+import csv
+import glob
 import numpy as np
 import xlwings as xw
 from datetime import datetime, timedelta
@@ -56,12 +58,12 @@ try:
 except Exception as ex:
     print(f"An error occurred: {ex}")
 
-
 # Get user input for the parent folder
 #parent_folder = input("Enter the parent folder path: ")
 
 # Get a list of all files in the parent folder
 all_files = os.listdir(parent_folder)
+
 #all_files
 
 file_name = 'Logic_for_Deposit_Outflows.xlsx'
@@ -74,6 +76,7 @@ if os.path.exists(file_path):
 
 else:
     print(f"The file '{file_name}' does not exist in the specified folder.")
+
 
 #Logic_for_Deposit_Outflows_df
 
@@ -118,6 +121,14 @@ for txt_file in txt_files:
         file_path = os.path.join(parent_folder, txt_file)
         df_repay = pd.read_csv(file_path)
         
+    if "LoanDepSUB" in txt_file:
+        file_path = os.path.join(parent_folder,txt_file)
+        df_loandep = pd.read_csv(file_path)
+        
+    #if "CollateralSUB" in txt_file:
+    #    file_path = os.path.join(parent_folder,txt_file)
+    #    df_collat = pd.read_csv(file_path)
+        
     if "SecuritySUB" in txt_file:
         file_path = os.path.join(parent_folder, txt_file)
         df_security = pd.read_csv(file_path)
@@ -138,8 +149,8 @@ Lamba Pension Fund:- 800002588
 Change the sector code for above to be 3410
 And Change Industry code to 1001'''
 
-'''xcvbn = df_cust[df_cust['Customer Identifier'] == '610963269']
-xcvbn'''
+#xcvbn = df_cust[df_cust['Customer Identifier'] == '610963269']
+#xcvbn
 
 # Define the list of customer identifiers
 
@@ -153,9 +164,6 @@ new_industry_code = 1001
 mask = df_cust['Customer Identifier'].isin(customer_identifiers)
 df_cust.loc[mask, 'Sector Code'] = new_sector_code
 df_cust.loc[mask, 'Industry Code'] = new_industry_code
-#df_cust
-
-#df_exch.columns
 
 columns_to_drop = ['Currency Name', 'Material Currency', 'Significant Currency', 'Multiplier/Divisor']
 df_exch = df_exch.drop(columns=columns_to_drop)
@@ -168,7 +176,6 @@ exch_GBP = df_exch[df_exch['Currency Code'] == 'GBP'].reset_index(drop=True)
 exch_EUR = df_exch[df_exch['Currency Code'] == 'EUR'].reset_index(drop=True)
 exch_CAD = df_exch[df_exch['Currency Code'] == 'CAD'].reset_index(drop=True)
 exch_INR = df_exch[df_exch['Currency Code'] == 'INR'].reset_index(drop=True)
-
 
 # # Dates ( future_date; notice_acc_dt; casa_excl_notice_acc_dt; one_yr_old_dt)
 
@@ -230,7 +237,6 @@ print('CASA Date: ', casa_excl_notice_acc_dt, '\n')
 print('1Year Old Date: ', one_yr_old_dt, '\n')
 
 #future_date
-
 #exch_usd.info()
 
 # # Security File Start
@@ -239,8 +245,7 @@ print('1Year Old Date: ', one_yr_old_dt, '\n')
 #df_security.isnull().sum()
 #df_security
 
-# Update Investment Type for BPI France And KFW
-
+# Update Investment Type for BPI France And KFW and KONOCKR
 def update_security_data(df_security):
     # Define the conditions for BPIFSEC
     condition_1_bpi = (df_security['Issuer Id'] == 'BPIFSEC') & (df_security['Product Type'] == 70013016)
@@ -261,6 +266,16 @@ def update_security_data(df_security):
 
     df_security.loc[condition_1_kfw & ~condition_2_kfw, 'Investment Type'] = 'GOVERNMENT SECURITIES'
     df_security.loc[condition_1_kfw & ~condition_2_kfw, 'HQ Indicator'] = 'I'
+    
+    # Define the conditions for KONOCKR
+    condition_1_knockr = (df_security['Issuer Id'] == 'KONOCKR') & (df_security['Product Type'] == 70013020)
+    condition_2_knockr = (df_security['Investment Type'] == 'DEBENTURES & BONDS') & (df_security['HQ Indicator'] == 'II A')
+
+    # Apply the conditions for KONOCKR
+    df_security.loc[condition_1_knockr, ['Investment Type', 'HQ Indicator']] = df_security.loc[condition_1_knockr, ['Investment Type', 'HQ Indicator']].fillna('')  # Fill NaN values with empty strings
+
+    df_security.loc[condition_1_knockr & ~condition_2_knockr, 'Investment Type'] = 'DEBENTURES & BONDS'
+    df_security.loc[condition_1_knockr & ~condition_2_knockr, 'HQ Indicator'] = 'II A'
 
     return df_security
 
@@ -273,11 +288,13 @@ df_security = update_security_data(df_security)
 # Merge the DataFrames on 'Currency Code'
 df_security = df_security.merge(df_exch, left_on='Currency', right_on='Currency Code', how='left')
 
+# Save a copy of the data frame df_securoty
 #df_security.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/03.10.2023/security_test.csv', index = False)
 
 # Drop the column Currency code
 columns_to_drop = ['Currency Code']
 df_security = df_security.drop(columns=columns_to_drop)
+
 #df_security.columns
 
 # Check the ['Maturity Date'] column 
@@ -330,13 +347,6 @@ df_security['MTM GBP'] = df_security.apply(mtm_gbp, axis=1)
 # Apply the conversion function (principle_gbp) to create a new column
 df_security['Principle GBP'] = df_security.apply(principle_gbp, axis=1)
 
-'''
-
-
-
-
-
-'''
 # Columns to convert to datetime
 date_columns = ['Start Date', 'Maturity Date', 'Settlement Date']
 # Convert columns to datetime format
@@ -364,16 +374,17 @@ def lcr_row_logic(row):
             return "0"
 # Apply the logic to create the 'LCR row' column
 df_security['LCR row'] = df_security.apply(lcr_row_logic, axis=1)
+
 #df_security['LCR row'].value_counts()
 
-#a = df_security[df_security['LCR row']== '0']
+a = df_security[df_security['LCR row']== '0']
 #a
 
 # Column MDB Flag
 #Get the values from column MDB Flag to MDB Flag2
 df_security['MDB FLAG2'] = df_security['MDB Flag']
-#df_security['MDB FLAG2'].value_counts()
 
+#df_security['MDB FLAG2'].value_counts()
 #df_security['Exchange Rate']
 
 '''# Column Check
@@ -399,6 +410,7 @@ df_security['Difference'] = df_security['MTM'] - df_security['Check']
 
 # Round down the column upto 2 decimal points
 df_security['Difference'] = df_security['Difference'].round(2)
+
 #df_security['Difference'].sum()
 
 # Column Book Vlaue GBP
@@ -406,9 +418,9 @@ def book_value_gbp(row):
     if row['Trading Indicator'] == 'AFS':
         return row ['MTM GBP']
     elif row['Currency'] == 'USD':
-        return round ((row['Principal Amount CCY'] / row['Exchange Rate']) * (row['Purchase Price']/100), 2)
+        return round ((row['Principal Amount CCY'] / row['Exchange Rate']), 2)
     elif row['Currency'] == 'EUR':
-        return round ((row['Principal Amount CCY']/row['Exchange Rate']) * (row['Purchase Price']/100), 2)
+        return round ((row['Principal Amount CCY']/row['Exchange Rate']), 2)
     elif row['Currency'] == 'GBP':
         return round(row['Principal Amount CCY'] * (row['Purchase Price']/100), 2)
 
@@ -424,26 +436,13 @@ df_security['Residence Code'] = df_security['Issuer Id'].map(cust_residency_mapp
 
 # If there's no match, fill the 'Residence Code' column with a default value (e.g., 'N/A')
 df_security['Residence Code'].fillna('N/A', inplace=True)
-
 #df_security['Residence Code'].value_counts()
 
 # Column Nominal GBP
 df_security['Nominal GBP'] = df_security['Nominal Amount CCY']/df_security['Exchange Rate']
 
 df_security['Nominal GBP'] = df_security['Nominal GBP'].round(2)
-
 #df_security['Nominal GBP'].sum()
-
-''' # Column Nominal GBP
-def nominal_gbp(row):
-    if row['Currency'] == 'USD':
-        return round( row ['Nominal Amount CCY'] / row['Exchange Rate'], 2)
-    elif row['Currency'] == 'EUR':
-        return round( row ['Nominal Amount CCY'] / row['Exchange Rate'], 2)
-    elif row['Currency'] == 'GBP':
-        return round (row['Nominal Amount CCY'], 2)
-# Apply the conversion function (book_value_gbp) to create a new column
-df_security['Nominal GBP'] = df_security.apply(nominal_gbp, axis=1)'''
 
 # Create empty columns Days to Maturity, PRA Time Bucket,
 df_security['Days to Maturity'] = 'COLUMN NOT REQUIRED'
@@ -457,7 +456,6 @@ df_security['LEI'] = df_security['Issuer Id'].map(lei_mapping)
 
 # Fill any NaN values in the 'dfgh' column with empty cells
 df_security['LEI'].fillna('', inplace=True)
-
 #df_security['LEI'].value_counts()
 
 # Create another empty column CB Eligibility
@@ -465,7 +463,6 @@ df_security['CB Eligibility'] = 'COLUMN NOT REQUIRED'
 
 col_to_drop = ['Exchange Rate']
 df_security = df_security.drop(columns=col_to_drop)
-
 #df_security.columns
 #df_security
 
@@ -487,7 +484,6 @@ cols_to_drop = ['Branch id', 'Customer Name','Risk Code', 'Incorporation Code','
                 'LEGroupCode', 'LEI CODE' ]
 
 df_cust_copy = df_cust_copy.drop(columns=cols_to_drop)
-
 #df_cust_copy.info()
 
 # Convert the column Customer Identifier of data customer data frame to string format
@@ -498,9 +494,7 @@ df_cust_copy.sort_values(by='Customer Identifier', ascending=True, inplace=True)
 #print(df_FSCSSUB.columns)
 
 # ADD THE FEATURE ENGINEERING COLUMNS TO THE DATA FRAME 
-
 # Add all the necessary column to be derived in the FSCS file
-
 # List of columns to add as empty columns
 empty_columns = [
     'Balance BILR','Maturity Date LCR','RETAIL FLAG','SME/NON-SME FLAG','RESIDENT CODE','BALANCE>£880,000',
@@ -513,18 +507,12 @@ empty_columns = [
 for column in empty_columns:
     df_FSCSSUB[column] = pd.Series(dtype='object')
 
-
-
-
-
 #print('FSCS columns: ', df_FSCSSUB.columns)
 #print('FSCS information: \n', df_FSCSSUB.info())
 
 #Check for the null values in all the columns in data set
 #df_FSCSSUB.isnull().sum()
-
 #df_FSCSSUB.info()
-
 #df_FSCSSUB['Current Date']
 
 # Add the addtional date columns from the date section above
@@ -545,7 +533,6 @@ df_FSCSSUB['CASA Date'] = casa_excl_notice_acc_dt
 df_FSCSSUB['1YR OLD Date'] = one_yr_old_dt
 
 #df_FSCSSUB.head(15)
-
 #df_FSCSSUB['START_DATE'].head(2)
 #df_FSCSSUB['1YR OLD Date'].head(3)
 
@@ -587,25 +574,18 @@ for column in date_columns:
 #df_FSCSSUB['START_DATE'] = df_FSCSSUB['START_DATE'].dt.strftime('%d/%m/%Y')
 #df_FSCSSUB['MATURITY_DATE'] = df_FSCSSUB['MATURITY_DATE'].dt.strftime('%d/%m/%Y')'''
 
-
 # Column START_DATE after converting to date and time format
 df_FSCSSUB[['START_DATE', 'MATURITY_DATE', 'Maturity Date LCR', 'Future Date','Notice Account Date','CASA Date','1YR OLD Date','Current Date']].head()
-
 
 '''# Format the dates in 'START_DATE','MATURITY_DATE','Maturity Date LCR'  column as 'dd/mm/yyyy'
 df_FSCSSUB['START_DATE'] = df_FSCSSUB['START_DATE'].dt.strftime('%d/%m/%Y')
 df_FSCSSUB['MATURITY_DATE'] = df_FSCSSUB['MATURITY_DATE'].dt.strftime('%d/%m/%Y')
 df_FSCSSUB['Maturity Date LCR'] = df_FSCSSUB['Maturity Date LCR'].dt.strftime('%d/%m/%Y')
-'''
-
-'''# Column START_DATE after converting to dd/mm/yyyy format
+# Column START_DATE after converting to dd/mm/yyyy format
 df_FSCSSUB['START_DATE']'''
 
-
 #df_FSCSSUB['Maturity Date LCR'].info()
-
 #df_FSCSSUB['MATURITY_DATE'].head(15)
-
 #df_FSCSSUB.info()
 #df_cust_copy.isnull().sum()
 
@@ -653,7 +633,6 @@ df_FSCSSUB['Balance BILR'] = df_FSCSSUB.apply(bal_bilr_logic, axis=1)
 # Check the uniquevalues in column Product_type
 #df_FSCSSUB['PRODUCT_TYPE'].unique()
 
-
 # Column Maturity Date LCR
 conditions = [
     (
@@ -671,7 +650,6 @@ choices = [
 
 # Use numpy.select to apply conditions and choices
 df_FSCSSUB['Maturity Date LCR'] = np.select(conditions, choices, default=df_FSCSSUB['CASA Date'])
-
 #df_FSCSSUB['Maturity Date LCR'].isnull().sum()
 
 '''conditions = [
@@ -690,7 +668,6 @@ default_selection = [df_FSCSSUB['CASA Date']]
 
 # Use numpy.select to apply conditions and choices
 df_FSCSSUB['Maturity Date LCR'] = np.select(conditions, choices, default=casa_excl_notice_acc_dt)'''
-
 #df_FSCSSUB['MATURITY_DATE'].head(15)
 #df_FSCSSUB['Maturity Date LCR'].head(15)
 #df_cust_copy.head()
@@ -708,6 +685,7 @@ df_FSCSSUB['Maturity Date LCR'] = np.select(conditions, choices, default=casa_ex
 
 df_cust_copy['Customer Identifier'] = df_cust_copy['Customer Identifier'].astype(str)
 df_FSCSSUB['CUSTOMER_ID'] = df_FSCSSUB['CUSTOMER_ID'].astype(str)
+
 #print(df_FSCSSUB.shape)
 #print(df_cust_copy.shape)
 
@@ -723,6 +701,7 @@ df_FSCSSUB = df_FSCSSUB.drop(['Customer Identifier'], axis =1)
 
 # Replace missing values in column SME Flag with 0
 df_FSCSSUB['SME Flag'].fillna(0, inplace=True)
+
 #df_FSCSSUB.columns
 
 # Column RETAIL FLAG
@@ -736,7 +715,6 @@ df_FSCSSUB['SME/NON-SME FLAG'] = df_FSCSSUB['SME Flag']
 '''# logic for RETAIL FLAG column
 df_FSCSSUB['RETAIL FLAG'] = df_FSCSSUB['CUSTOMER_ID'].map(df_cust_copy.set_index('Customer Identifier')['Residency Code'])
 df_FSCSSUB['RETAIL FLAG'].fillna(0, inplace=True)'''
-
 
 ''' # Logic for SME/NON-SME FLAG
 df_FSCSSUB['SME/NON-SME FLAG'] = df_FSCSSUB['CUSTOMER_ID'].map(df_cust.set_index('Customer Identifier')['SME Flag'])
@@ -752,7 +730,6 @@ df_FSCSSUB['RESIDENT CODE'] = df_FSCSSUB['Residency Code']
 '''df_FSCSSUB['RESIDENT CODE'] = df_FSCSSUB['CUSTOMER_ID'].map(df_cust_copy.set_index('Customer Identifier')['Residency Code'])
 #df_FSCSSUB['RESIDENT CODE'].fillna(0, inplace=True)'''
 
-
 '''# Create a dictionary mapping Customer Identifier to Residency Code
 cust_identifier_mapping = df_cust.set_index('Customer Identifier')['Residency Code'].to_dict()
 
@@ -761,7 +738,6 @@ df_FSCSSUB['RESIDENT CODE'] = df_FSCSSUB['CUSTOMER_ID'].map(cust_identifier_mapp
 
 # If there's no match, fill the 'cvbn' column with a default value (e.g., 'N/A')
 df_FSCSSUB['RESIDENT CODE'].fillna('N/A', inplace=True)'''
-
 
 '''# Merge df_FSCSSUB and df_cust on 'CUSTOMER_ID' and 'Customer Identifier' columns
 merged = df_FSCSSUB.merge(df_cust[['Customer Identifier', 'Residency Code']], left_on='CUSTOMER_ID', right_on='Customer Identifier', how='left')
@@ -776,16 +752,13 @@ df_FSCSSUB['RESIDENT CODE'] = merged_df['Residency Code']
 #df_FSCSSUB['RESIDENT CODE'].fillna(0, inplace=True)
 '''
 
-
 # ## Creation of DepositBalChk
 
 # Group the DataFrame by 'CUSTOMER_ID' and calculate the sum of 'Balance BILR'
 DepositBalChk = df_FSCSSUB.groupby('CUSTOMER_ID')['Balance BILR'].sum().reset_index()
 
 #DepositBalChk
-
 #df_cust_copy.columns
-
 
 # Merge the df_FSCSSUB and DepositBalChk file based on the customer ID column
 
@@ -819,6 +792,7 @@ df_FSCSSUB['Uncovered Amount GBP'] = np.where(df_FSCSSUB['Balance BILR'] > df_FS
 
 #Round down the column Uncovered Amount GBP pto 2 decimal points
 df_FSCSSUB['Uncovered Amount GBP'] = df_FSCSSUB['Uncovered Amount GBP'].round(2)
+
 #df_FSCSSUB['Uncovered Amount GBP'].sum()
 
 '''# Column Uncovered Amount GBP
@@ -832,7 +806,6 @@ def uncovered_amt_gbp(row):
 df_FSCSSUB['Uncovered Amount GBP'] = df_FSCSSUB.apply(uncovered_amt_gbp, axis=1)'''
 
 # Column Sector Code
-
 df_FSCSSUB['Sector Code'] = df_FSCSSUB['Sector Code_y']
 
 # Replace missing values in 'SME/NON-SME FLAG' with 0
@@ -840,9 +813,7 @@ df_FSCSSUB['Sector Code'].fillna(0, inplace=True)
 
 # Convert 'Sector Code' column to integer type
 df_FSCSSUB['Sector Code'] = df_FSCSSUB['Sector Code'].astype(int)
-
 #df_FSCSSUB['Sector Code'].value_counts()
-
 
 # condition for notice_Account check
 notice_Account_condition = df_FSCSSUB['SCHM_CODE'].isin(['NSB15', 'NSB16', 'NSB17'])
@@ -864,7 +835,6 @@ fiancial_customer_condition = (
 
 # Create a new column 'Result' based on the condition
 df_FSCSSUB['fiancial customer Y/N'] = np.where(fiancial_customer_condition, 'YES', 'NO')
-
 #df_FSCSSUB['fiancial customer Y/N'].value_counts()
 
 '''
@@ -874,13 +844,11 @@ condition = df_FSCSSUB['Sector Code'].isin(['3350', '3370', '4539'])
 # Create a new column 'Result' based on the condition
 df_FSCSSUB['fiancial customer Y/N'] = np.where(condition, 'YES', 'NO')
 '''
-
 #df_FSCSSUB['Maturity Date LCR'].info()
 #df_FSCSSUB['Future Date'].info()
 
 '''# Convert 'Maturity Date LCR' column to datetime format
 df_FSCSSUB['Maturity Date LCR'] = pd.to_datetime(df_FSCSSUB['Maturity Date LCR'])'''
-
 #df_FSCSSUB['Maturity Date LCR']
 
 # Column LCR PERIOD
@@ -908,7 +876,6 @@ df_FSCSSUB['INDIVIDUAL + SME'] = np.where(
 )
 
 #df_FSCSSUB['INDIVIDUAL + SME'].value_counts()
-
 #df_FSCSSUB['INDIVIDUAL + SME'].value_counts()
 
 '''# Column INDIVIDUAL + SME
@@ -938,6 +905,7 @@ def check_conditions(row):
 
 # Apply the function to create the 'bv' column
 df_FSCSSUB['TOTAL CUSTOMER Balance LESS than £440K'] = df_FSCSSUB.apply(check_conditions, axis=1)
+
 #df_FSCSSUB['TOTAL CUSTOMER Balance LESS than £440K'].value_counts()
 
 # Column NON-UK Resident
@@ -953,11 +921,9 @@ def non_uk_resident(row):
 
 # Apply the logic to create a new column 
 df_FSCSSUB['NON-UK Resident'] = df_FSCSSUB.apply(non_uk_resident, axis=1)
-
 #df_FSCSSUB['NON-UK Resident'].value_counts()
 
 # Column NON-GBP Denominated
-
 def non_gbp_denomination (row):
     if row['fiancial customer Y/N'] == 'NO' and row['INDIVIDUAL + SME'] == 'YES':
         if row['Currency'] == 'GBP':
@@ -968,13 +934,10 @@ def non_gbp_denomination (row):
 
 # Apply the logic to create a new column NON-GBP Denominated
 df_FSCSSUB['NON-GBP Denominated'] = df_FSCSSUB.apply(non_gbp_denomination, axis=1)
-
 #df_FSCSSUB['NON-GBP Denominated'].value_counts()
-
 #df_FSCSSUB.columns
 
 # Column FSCS COVERED
-
 def fscs_cover(row):
     if row['fiancial customer Y/N'] == 'NO' and row['TOTAL CUSTOMER Balance LESS than £440K'] == 'YES':
         if row['COVERED_IND'] == 'YES':
@@ -993,6 +956,7 @@ df_FSCSSUB['FSCS COVERED'] = df_FSCSSUB.apply(fscs_cover, axis=1)
 #df_FSCSSUB['1YR OLD Date'].head(2)
 #df_FSCSSUB['START_DATE'].head(2)
 
+# Create a Copy of FSCS data frame 
 df1 = df_FSCSSUB.copy()
 #df1.columns
 
@@ -1023,10 +987,6 @@ df2['Date_Condition'] = df2.apply(Date_check_condition, axis=1)
 
 #df2['Date_Condition'].value_counts()
 
-
-
-
-
 def final_condition(row):
     if  row['AND_Condition']== '1':
         return row['Date_Condition']
@@ -1036,268 +996,18 @@ def final_condition(row):
     
 # Apply the logic to create a new column OLDER than 12 Months
 df2['final_Condition'] = df2.apply(final_condition, axis=1)
-
-
-
-
-
-df2['final_Condition'].value_counts()
-
-
-
-
+#df2['final_Condition'].value_counts()
 
 #df2.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/03.10.2023/df2.csv', index = False)
-
-
-
-
 
 # Column OLDER than 12 Months ACTIVE Relationship
 
 df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'] = df2['final_Condition']
 
-
-
-
-
 # Replace 1 with 'YES' and 0 with 'NO' in the specified column
 df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'] = df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'].replace({'1': "YES", '0': "NO"})
 
-
-
-
-
-df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'].value_counts()
-
-
-
-
-
-'''# Creating a new DataFrame based on the specified conditions
-new_df = df1[(df1['fiancial customer Y/N'] == 'NO') & (df1['TOTAL CUSTOMER Balance LESS than £440K'] == 'YES')]
-new_df'''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#df1.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/03.10.2023/yu.csv', index = False)
-
-
-
-
-
-#df_FSCSSUB['START_DATE_copy'] = df_FSCSSUB['START_DATE']
-
-
-
-
-
-'''# Print dates in "date/month/year" format
-df_FSCSSUB['START_DATE_copy'] = df_FSCSSUB['START_DATE_copy'].dt.strftime('%d %B %Y')
-df_FSCSSUB['1YR OLD Date'] = df_FSCSSUB['1YR OLD Date'].dt.strftime('%d %B %Y')'''
-
-
-
-
-
-#df_FSCSSUB['START_DATE_copy']
-
-
-
-
-
-#df_FSCSSUB['1YR OLD Date']
-
-
-
-
-
-df_FSCSSUB['START_DATE'].isnull().sum()
-
-
-
-
-
-#df_FSCSSUB['START_DATE_copy'] = df_FSCSSUB['START_DATE']
-
-
-
-
-
-#df_FSCSSUB['START_DATE_copy'].head(2)
-
-
-
-
-
-'''# Filling the missing values in the column START_DATE with the user input date
-df_FSCSSUB['START_DATE_copy'].fillna(date_obj.strftime('%d/%m/%Y'), inplace=True)'''
-
-
-
-
-
-#df_FSCSSUB['START_DATE_copy'].isnull().sum()
-
-
-
-
-
-# Filling the missing values in the column START_DATE with the user input date
-#df_FSCSSUB['START_DATE_copy'].fillna(date_obj.strftime('%d %B %Y'), inplace=True)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#def active_relationship(row):
-#    if row['fiancial customer Y/N'] == 'NO' and row['TOTAL CUSTOMER Balance LESS than £440K'] == 'YES':
-#        return 'YES' if row['START_DATE'] < row['1YR OLD Date'] else 'NO'
-#    else:
-#        return ''
-#    
-# Apply the logic to create a new column OLDER than 12 Months
-#df_FSCSSUB['OLDER than 12 Months'] = df_FSCSSUB.apply(active_relationship, axis=1)
-
-
-
-
-
-'''# Column OLDER than 12 Months ACTIVE Relationship
-
-df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'] = df2['final_Condition']'''
-
-
-
-
-
-#df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'].value_counts()
-
-
-
-
-
-'''# Column OLDER than 12 Months ACTIVE Relationship
-def active_relationship(row):
-    if row['fiancial customer Y/N'] == "NO" and row['TOTAL CUSTOMER Balance LESS than £440K'] == "YES":
-        if row['START_DATE'] < row['1YR OLD Date']:
-            return "YES"
-        else:
-            return "NO"
-    return ""
-
-# Apply the logic to create a new column OLDER than 12 Months
-df_FSCSSUB['OLDER than 12 Months'] = df_FSCSSUB.apply(active_relationship, axis=1)'''
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-#a = df_FSCSSUB[df_FSCSSUB['INDIVIDUAL + SME']]
-#df_FSCSSUB.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/03.10.2023/test.csv', index = False)
-
-
-
-
-
-#stop
-
-
-
-
-
-df_FSCSSUB['START_DATE'].info()
-
-
-
-
-
-'''# Convert 'Start Date' column to datetime format
-df_FSCSSUB['START_DATE'] = pd.to_datetime(df_FSCSSUB['START_DATE'])'''
-
-
-
-
-
-df_FSCSSUB['START_DATE'].head(20)
-
-
-
-
-
-type(one_yr_old_dt)
-
-
-
-
+#type(one_yr_old_dt)
 
 # Check if a column is of string type
 column_name = 'START_DATE'
@@ -1308,23 +1018,11 @@ if is_string_column:
 else:
     print(f"{column_name} is not a string column.")
 
-
-
-
-
-print(df_FSCSSUB['START_DATE'].dtype)
-print(df_FSCSSUB['START_DATE'].isnull().sum())
-
-
-
-
+#print(df_FSCSSUB['START_DATE'].dtype)
+#print(df_FSCSSUB['START_DATE'].isnull().sum())
 
 # Filling the missing values in the column START_DATE with the user input date
 df_FSCSSUB['START_DATE'].fillna(date_obj.strftime('%d/%m/%Y'), inplace=True)
-
-
-
-
 
 '''
 # Use this logic if the missing values are to be kept as it is 
@@ -1349,16 +1047,6 @@ df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'] = df_FSCSSUB.apply(active
 # Check for the total counts for all the values in the column
 df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'].value_counts()'''
 
-
-
-
-
-
-
-
-
-
-
 '''# Column OLDER than 12 Months ACTIVE Relationship
 def active_relationship(row):
     if row['fiancial customer Y/N'] == 'NO' and row['TOTAL CUSTOMER Balance LESS than £440K'] == 'YES':
@@ -1371,21 +1059,8 @@ def active_relationship(row):
 # Apply the logic to create a new column NON-GBP Denominated
 df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'] = df_FSCSSUB.apply(active_relationship, axis=1)'''
 
-
-
-
-
-df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'].info()
-
-
-
-
-
-df_FSCSSUB.columns
-
-
-
-
+#df_FSCSSUB['OLDER than 12 Months ACTIVE Relationship'].info()
+#df_FSCSSUB.columns
 
 # Column VLOOKUP TOTAL
 def vlookup_total(row):
@@ -1393,221 +1068,44 @@ def vlookup_total(row):
 
 # Apply logic (combine_columns) to create the column LCR Sheet Lookup
 df_FSCSSUB['VLOOKUP TOTAL'] = df_FSCSSUB.apply(vlookup_total, axis=1)
+#df_FSCSSUB['VLOOKUP TOTAL'].value_counts()
 
-
-
-
-
-df_FSCSSUB['VLOOKUP TOTAL'].value_counts()
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-Logic_for_Deposit_Outflows_df.head()
-
-
-
-
-
-Logic_for_Deposit_Outflows_df.columns
-
-
-
-
-
-Logic_for_Deposit_Outflows_df['Category'].value_counts()
-
-
-
+#Logic_for_Deposit_Outflows_df.head()
+#Logic_for_Deposit_Outflows_df.columns
+#Logic_for_Deposit_Outflows_df['Category'].value_counts()
 
 
 # Create a copy of Logic_for_Deposit_Outflows_df 
 deposit_outflow_copy = Logic_for_Deposit_Outflows_df.copy()
 
-
-
-
-
 # Consider only 2 columns 'Vlookup Total', 'Category'
 deposit_outflow_copy = deposit_outflow_copy[['Vlookup Total', 'Category']]
 # Rename the 'Category' column to 'CAT_1'
 deposit_outflow_copy.rename(columns={'Vlookup Total': 'vlookup_total'}, inplace=True)
-
-
-
-
-
-deposit_outflow_copy.shape
-
-
-
-
+#deposit_outflow_copy.shape
 
 # check for the duplications in columnn Catefory
-Logic_for_Deposit_Outflows_df['Vlookup Total'].duplicated()
-
-
-
-
+#Logic_for_Deposit_Outflows_df['Vlookup Total'].duplicated()
 
 '''# Find and display the exact duplicate values in the 'Vlookup Total' column
 duplicate_values = Logic_for_Deposit_Outflows_df[Logic_for_Deposit_Outflows_df['Vlookup Total'].duplicated(keep=False)]
 duplicate_values'''
 
-
-
-
-
-deposit_outflow_copy['Category'].value_counts()
-
-
-
-
+#deposit_outflow_copy['Category'].value_counts()
 
 # Remove all the occurances of the 'NOTICE ACCT', 'HIGHER OUTFLOW CAT 2' from the column CAT_1
 deposit_outflow_copy = deposit_outflow_copy[~deposit_outflow_copy['Category'].isin(['NOTICE ACCT'])]
 
-
-
-
-
-deposit_outflow_copy.shape
-
-
-
-
-
+#deposit_outflow_copy.shape
 #df_FSCSSUB.columns
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 # Merge the DataFrames on column 'VLOOKUP TOTAL' and 'vlookup_total'
 df_FSCSSUB = df_FSCSSUB.merge(deposit_outflow_copy, left_on='VLOOKUP TOTAL', right_on='vlookup_total', how='left')
 
-
-
-
-
-df_FSCSSUB.head(2)
-
-
-
-
-
 # Column CAT_1
 df_FSCSSUB['CAT_1'] = df_FSCSSUB['Category']
-
-
-
-
-
-df_FSCSSUB['CAT_1'].value_counts()
-
-
-
-
-
-'''# Specify columns to check for duplicates
-columns_to_check_duplicates = ['CAT_1']
-# Keep the first occurrence and drop the rest
-a.drop_duplicates(subset=columns_to_check_duplicates, keep='first', inplace=True)'''
-
-
-
-
-
-
-
-
-
-
-
-#a.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/August ReDIS Files/03.10.2023/trial/a1.csv', index = False)
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+#df_FSCSSUB['CAT_1'].value_counts()
 #df_FSCSSUB['CAT_1'].isnull().sum()
-
-
-
-
-
-
-
-
-
-
 
 # Column LIAB_OUTF_CAT
 def categorize_accounts(row):
@@ -1623,52 +1121,16 @@ def categorize_accounts(row):
 # Apply the categorization logic to create a new column 'Category'
 df_FSCSSUB['LIAB_OUTF_CAT'] = df_FSCSSUB.apply(categorize_accounts, axis=1)
 
-
-
-
-
-df_FSCSSUB['LIAB_OUTF_CAT'].nunique()
-
-
-
-
-
-df_FSCSSUB['LIAB_OUTF_CAT'].value_counts()
-
-
-
-
-
-
-
-
-
-
-
-df_FSCSSUB.columns
-
-
-
-
+#df_FSCSSUB['LIAB_OUTF_CAT'].nunique()
+#df_FSCSSUB['LIAB_OUTF_CAT'].value_counts()
+#df_FSCSSUB.columns
 
 #deposit_bal_merged_df.head()
-
-
-
-
 
 # Define the condition and create a new column 'Result'
 lookup_condition = df_FSCSSUB['Deposit_BAL_Balance_BILR'] <= 85000
 
-
-
-
-
 #lookup_condition
-
-
-
-
 
 # Column NON-RETAIL DEPOSIT ROW250
 def categorize_rtyu(row):
@@ -1684,44 +1146,15 @@ def categorize_rtyu(row):
 
 # Apply the categorization logic to create a new column 'NON-RETAIL DEPOSIT ROW250'
 df_FSCSSUB['NON-RETAIL DEPOSIT ROW250'] = df_FSCSSUB.apply(categorize_rtyu, axis=1)
-
-
-
-
-
-df_FSCSSUB['NON-RETAIL DEPOSIT ROW250'].value_counts()
-
-
-
-
-
-
-
-
-
-
-
-df_FSCSSUB.columns
-
-
-
-
+#df_FSCSSUB['NON-RETAIL DEPOSIT ROW250'].value_counts()
+#df_FSCSSUB.columns
 
 # Column Covered Amt CCY
 
 df_FSCSSUB['Covered Amt CCY'] = df_FSCSSUB['Covered Amount GBP']*df_FSCSSUB['Exchange Rate']
 
 df_FSCSSUB['Covered Amt CCY'] = df_FSCSSUB['Covered Amt CCY'].round(2)
-
-
-
-
-
-df_FSCSSUB['Covered Amt CCY'].sum().round(2)
-
-
-
-
+#df_FSCSSUB['Covered Amt CCY'].sum().round(2)
 
 '''def covered_amt_ccy(row):
     if row['Currency'] == 'USD':
@@ -1734,10 +1167,6 @@ df_FSCSSUB['Covered Amt CCY'].sum().round(2)
         return round ( row['Covered Amount GBP'], 2)
 # Apply the covered_amt_ccy logic to create a new column 'Covered Amt CCY'
 df_FSCSSUB['Covered Amt CCY'] = df_FSCSSUB.apply(covered_amt_ccy, axis=1)   '''   
-
-
-
-
 
 # Column Uncovered amt CCY
 def uncovered_amt_ccy(row):
@@ -3305,6 +2734,12 @@ df_repay['LCR PERIOD INT'] = df_repay.apply(lcR_period_int, axis=1)
 
 
 
+
+
+
+
+
+
 #df_repay['LCR PERIOD INT'].value_counts()
 
 
@@ -4027,6 +3462,33 @@ print("DataFrames saved in both .txt and .csv formats in the provided folder.")
 
 
 
+#df_derivative.columns
+
+
+
+
+
+# Convert 'Maturity Date' to datetime format for comparison and manipulation
+
+df_security['Maturity Date'] = pd.to_datetime(df_security['Maturity Date'], dayfirst=True)
+df_security['Start Date'] = pd.to_datetime(df_security['Start Date'], dayfirst=True)
+df_security['Settlement Date'] = pd.to_datetime(df_security['Settlement Date'], dayfirst=True)
+df_security['Next Reset Date'] = pd.to_datetime(df_security['Next Reset Date'], dayfirst=True)
+
+df_fxdeals['Deal Date'] = pd.to_datetime(df_fxdeals['Deal Date'], dayfirst=True)
+df_fxdeals['Maturity date'] = pd.to_datetime(df_fxdeals['Maturity date'], dayfirst=True)
+
+df_derivative['Deal Date'] = pd.to_datetime(df_derivative['Deal Date'], dayfirst=True)
+df_derivative['Maturity date'] = pd.to_datetime(df_derivative['Maturity date'], dayfirst=True)
+df_derivative['Settlement Date'] = pd.to_datetime(df_derivative['Settlement Date'], dayfirst=True)
+df_derivative['Settlement Date Rec'] = pd.to_datetime(df_derivative['Settlement Date Rec'], dayfirst=True)
+df_derivative['Exch Principal Start'] = pd.to_datetime(df_derivative['Exch Principal Start'], dayfirst=True)
+df_derivative['Exch Principal End'] = pd.to_datetime(df_derivative['Exch Principal End'], dayfirst=True)
+
+
+
+
+
 #excel_file = "C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Reports/Liquidity automation file_June Trial.xlsx"
 
 
@@ -4200,7 +3662,15 @@ start_row_to_clear = 5  # Specify the start row
 for sheet_name in worksheets_to_clear:
     clear_contents_from_5throw(sheet_name, start_row_to_clear)
 
+
+
+
+
 #df_security['Maturity Date']
+
+
+
+
 
 def copy_dataframe_to_worksheet(df, ws, start_row):
     # Write the data (excluding headers) to the worksheet
@@ -4223,6 +3693,10 @@ for df, sheet_name, start_row in dataframes_and_worksheets:
     ws = wb.sheets[sheet_name]
     copy_dataframe_to_worksheet(df, ws, start_row)
 
+
+
+
+
 # Select the worksheet named "Lombard Repay"
 ws_limit = wb.sheets["Lombard Limit"]
 
@@ -4239,9 +3713,21 @@ range_to_clear.clear_contents()
 # Write the data (excluding headers) to the worksheet
 ws_limit.range("A3").value = df_limit.values
 
+
+
+
+
 #df_security['Maturity Date']
 
+
+
+
+
 #xw.view(df_security)
+
+
+
+
 
 # Save the workbook
 wb.save()
@@ -4250,72 +3736,1988 @@ wb.save()
 wb.close()
 
 
+
+
+
 # Record the end time
-end_time = time.time()
+laptime = time.time()
 
 # Calculate the elapsed time
-elapsed_time = end_time - start_time
+LCR_completion_time = laptime - start_time
 
 # Convert elapsed time to a human-readable format
-hours, rem = divmod(elapsed_time, 3600)
+hours, rem = divmod(LCR_completion_time, 3600)
 minutes, seconds = divmod(rem, 60)
 
 # Display the time taken
 print("Time taken: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
 
 
+# # Capital Dashboard Calculation Start #
+
+# #### Read Dependency File
 
 
 
-'''# Select the worksheets from the workbook
 
-# Select the worksheet named "Lombard Cust RPT"
-ws_cust = wb.sheets["Lombard Cust RPT"]
+def read_dependency_coding_file(parent_folder, file_name='Capital_Dashboard_Dependency.xlsx'):
+    """
+    Read specific worksheets from the Capital_Dashboard_Dependency file in the specified parent folder.
 
-# Select the worksheet named "Lombard Repay"
-ws_repay = wb.sheets["Lombard Repay"]
+    Args:
+    parent_folder (str): Path of the parent folder.
+    file_name (str): Name of the GL coding file. Default is 'Capital_Dashboard_Dependency.xlsx'.
+
+    Returns:
+    tuple: Tuple containing DataFrames for each worksheet (ratings_df).
+    """
+    
+    file_path = os.path.join(parent_folder, file_name)
+
+    # Check if the file exists before reading it
+    if os.path.exists(file_path):
+        # Use xlwings to load the Excel file
+        app = xw.App(visible=False)  # Create an Excel app instance (hidden)
+        wb = xw.Book(file_path)  # Open the Excel file
+
+        # Initialize DataFrames for each worksheet
+        df_rating = None
+        #code_desc_df = None
+        #acc_desc_df = None
+        #schm_desc_df = None
+
+        # Loop through each worksheet and load data into respective DataFrames
+        for sheet in wb.sheets:
+            if sheet.name == 'Ratings':
+                df_rating = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+            elif sheet.name == 'BOE Sector Code':
+                df_BOE_sector_code = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+            elif sheet.name == 'Risk Weight Logic':
+                df_rwlogic = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+            #elif sheet.name == 'Scheme Code Description':
+            #    schm_desc_df = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+            #elif sheet.name == 'MPC Dates':
+            #    mpc_df = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+
+        wb.close()  # Close the workbook
+        app.quit()  # Quit the Excel app
+        
+        return df_rating, df_BOE_sector_code,df_rwlogic
+    
+    else:
+        print(f"The file '{file_name}' does not exist in the specified folder.")
+        return None
+
+# Example usage:
+df_rating, df_BOE_sector_code,df_rwlogic = read_dependency_coding_file(parent_folder)
+
+if df_rating is not None:
+    print("Capital Dependency data loaded successfully.")
+    # Proceed with using the DataFrames as needed
+else:
+    print("No Capital Dependency data loaded.")
+
+
+
+
+
+#df_BOE_sector_code
+
+
+
+
+
+df_rating
+
+
+# ### Limit File ###
+
+
+
+
+df_accbal.columns
+
+
+
+
+
+df_limit
+
+
+
+
+
+# Merge based on the condition where 'ACCT NUMBER' matches 'Deal Reference'
+
+merged_df = pd.merge(df_limit, df_accbal[['Scheme Code', 'Account Number']], 
+                     left_on='Deal Reference', right_on='Account Number', how='left')
+
+# Drop the 'Account Number' column as it is not needed
+merged_df.drop(columns='Account Number', inplace=True)
+
+# Now, merged_df contains the updated values where applicable
+
+# Assign it back to df_loandep if needed
+df_limit = merged_df
+
+
+
+
+
+
+
+
+
+
+
+# Define a custom function to apply the logic
+def calculate_ccf(row):
+    if row['Reference Code'] in ['CEL05', 'CEL06']:
+        if row['Scheme Code'] in ['OD221', 'OD201']:
+            return 0.2
+        elif row['Scheme Code'] == 'OD222':
+            return 0.5
+        elif (row['Maturity Date'] - row['Start Date']).days <= 366:
+            return 0.2
+        else:
+            return 0.5
+    else:
+        return None  # You can modify this to return a default value if needed
+
+# Apply the custom function to create the 'CCF' column
+df_limit['CCF'] = df_limit.apply(calculate_ccf, axis=1)
+
+
+
+
+
+df_limit.info()
+
+
+
+
+
+#df_security.shape
+
+
+
+
+
+#df_limit.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/limit.csv', index = False)
+
+
+
+
+
+
+
+
+# #### Security File
+
+
+
+
+df_security.columns
+
+
+
+
+
+df_rating.columns
+
+
+
+
+
+def merge_security_with_ratings(df_security, df_rating):
+    """
+    Merge security data with ratings data based on different credit rating agencies.
+
+    Args:
+    df_security (DataFrame): DataFrame containing security data.
+    df_rating (DataFrame): DataFrame containing credit ratings data.
+
+    Returns:
+    DataFrame: Merged DataFrame with updated columns for credit ratings.
+    """
+    # Merge 'Long Term Moody' with 'Moodys'
+    df_security = pd.merge(df_security, df_rating[['Moodys', 'New #']], 
+                           left_on='Long Term Moody', right_on='Moodys', how='left')
+    
+    # Rename columns and drop unnecessary column
+    df_security.rename(columns={'New #': 'Moodys Number'}, inplace=True)
+    df_security.drop(columns='Moodys', inplace=True)
+
+    # Merge 'Long Term Fitch' with 'Fitch'
+    df_security = pd.merge(df_security, df_rating[['Fitch', 'New #']], 
+                           left_on='Long Term Fitch', right_on='Fitch', how='left')
+
+    # Rename columns and drop unnecessary column
+    df_security.rename(columns={'New #': 'Fitch Number'}, inplace=True)
+    df_security.drop(columns='Fitch', inplace=True)
+
+    # Merge 'Long Term S P' with 'S&P'
+    df_security = pd.merge(df_security, df_rating[['S&P', 'New #']], 
+                           left_on='Long Term S P', right_on='S&P', how='left')
+
+    # Rename columns and drop unnecessary column
+    df_security.rename(columns={'New #': 'S&P Number'}, inplace=True)
+    df_security.drop(columns='S&P', inplace=True)
+
+    return df_security
+
+# Call the function to merge and update ratings information
+df_security = merge_security_with_ratings(df_security, df_rating)
+
+
+
+
+
+df_security.info()
+
+
+
+
+
+df_cust.columns
+
+
+
+
+
+# Merge based on the condition where 'ACCT NUMBER' matches 'Deal Reference'
+
+merged_df = pd.merge(df_security, df_cust[['Customer Identifier', 'Customer Name']], 
+                     left_on='Issuer Id', right_on='Customer Identifier', how='left')
+
+# Drop the 'Account Number' column as it is not needed
+merged_df.drop(columns='Customer Identifier', inplace=True)
+
+# Now, merged_df contains the updated values where applicable
+
+# Assign it back to df_loandep if needed
+df_security = merged_df
+
+
+
+
+
+
+
+
+
+
+
+#df_security.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/security.csv', index = False)
+
+
+
+
+
+def calculate_final_rating(df):
+    """
+    Calculate the 'Final Rating' based on non-empty cells in specified columns of the input DataFrame.
+
+    Args:
+    df (pandas.DataFrame): Input DataFrame containing columns 'Moodys Number', 'Fitch Number', 'S&P Number'.
+
+    Returns:
+    pandas.DataFrame: DataFrame with updated 'Final Rating' column.
+    """
+    # Count non-empty cells in specified columns
+    non_empty_counts = df[['Moodys Number', 'Fitch Number', 'S&P Number']].count(axis=1)
+
+    # Initialize 'Final Rating' column with zeros
+    df['Final Rating'] = 0
+
+    # Check conditions and update 'Final Rating' column accordingly
+    for idx, count in enumerate(non_empty_counts):
+        if count > 0:  # At least one non-empty cell
+            if count == 2:
+                df.loc[idx, 'Final Rating'] = np.nanmax(df.loc[idx, ['Moodys Number', 'Fitch Number', 'S&P Number']])
+            else:
+                non_empty_values = df.loc[idx, ['Moodys Number', 'Fitch Number', 'S&P Number']].dropna()
+                df.loc[idx, 'Final Rating'] = np.round(np.nanmedian(non_empty_values), 0) if not non_empty_values.empty else 0
+    
+    return df
+
+# Apply the function to calculate 'Final Rating'
+df_security = calculate_final_rating(df_security)
+
+
+
+
+
+
+
+
+
+
+
+'''# Count non-empty cells in specified columns
+non_empty_counts = df_security[['Moodys Number', 'Fitch Number', 'S&P Number']].count(axis=1)
+
+# Initialize 'Final Rating' column with zeros
+df_security['Final Rating'] = 0
+
+# Check conditions and update 'Final Rating' column accordingly
+for idx, count in enumerate(non_empty_counts):
+    if count > 0:  # At least one non-empty cell
+        if count == 2:
+            df_security.loc[idx, 'Final Rating'] = np.nanmax(df_security.loc[idx, ['Moodys Number', 'Fitch Number', 'S&P Number']])
+        else:
+            non_empty_values = df_security.loc[idx, ['Moodys Number', 'Fitch Number', 'S&P Number']].dropna()
+            df_security.loc[idx, 'Final Rating'] = np.round(np.nanmedian(non_empty_values), 0) if not non_empty_values.empty else 0
+'''
+
+
+
+
+
+# Convert the column from float type to int64 type
+df_rating['#'] = df_rating['#'].astype('int64')
+
+
+
+
+
+df_rating
+
+
+
+
+
+# Merge data frame df_security and df_rating on column Final Rating and column #
+merged_df = pd.merge(df_security,df_rating[['#','S&P','CQS']],
+                      left_on='Final Rating', right_on='#', how='left')
+
+# Drop the '#' column as it is not needed
+merged_df.drop(columns='#', inplace=True)
+
+# Rename columns and drop unnecessary column
+merged_df.rename(columns={'S&P': 'Final Letter Rating'}, inplace=True)
+
+df_security = merged_df
+
+
+
+
+
+df_security.columns
+
+
+
+
+
+
+
+
+
+
+
+df_security['Maturity Date'] = pd.to_datetime(df_security['Maturity Date'], dayfirst=True)
+
+
+
+
+
+#df_security['Maturity Date'] 
+
+
+
+
+
+date_obj
+
+
+
+
+
+df_security['Residual Maturity Days'] = (df_security['Maturity Date'] - date_obj).dt.days
+
+
+
+
+
+# Function to categorize the residual maturity
+def categorize_maturity(days):
+    if days < 90:  # Less than 3 months (90 days)
+        return '<3M'
+    elif days == 90:  # Exactly 3 months (90 days)
+        return '3M'
+    else:  # Greater than 3 months
+        return '>3M'
+
+# Apply the categorization function to create a new column
+df_security['3M < Residual Maturity > 3M'] = df_security['Residual Maturity Days'].apply(categorize_maturity)
+
+
+
+
+
+df_BOE_sector_code
+
+
+
+
+
+df_cust.columns
+
+
+
+
+
+df_security.columns
+
+
+
+
+
+# Merge data frame df_security and df_cust on columnIssuer ID and column Customer Identifier
+merged_df = pd.merge(df_security,df_cust[['Customer Identifier','Sector Code']],
+                      left_on='Issuer Id', right_on='Customer Identifier', how='left')
+
+# Drop the '#' column as it is not needed
+merged_df.drop(columns='Customer Identifier', inplace=True)
+
+# Rename columns and drop unnecessary column
+#merged_df.rename(columns={'S&P': 'Final Letter Rating'}, inplace=True)
+
+df_security = merged_df
+
+
+
+
+
+# convert the type of the column BOE Sector Code from float 64 to int64
+
+#df_BOE_sector_code['BOE Sector Code'] = df_BOE_sector_code['BOE Sector Code'].astype('int64')
+
+
+
+
+
+#df_security.info()
+
+
+
+
+
+# Merge data frame df_security and df_BOE_sector_code on column Sector Code and column BOE Sector Code
+merged_df = pd.merge(df_security,df_BOE_sector_code[['BOE Sector Code','Category']],
+                      left_on='Sector Code', right_on='BOE Sector Code', how='left')
+
+# Drop the '#' column as it is not needed
+merged_df.drop(columns='BOE Sector Code', inplace=True)
+
+# Rename columns and drop unnecessary column
+#merged_df.rename(columns={'S&P': 'Final Letter Rating'}, inplace=True)
+
+df_security = merged_df
+
+
+
+
+
+
+
+
+
+
+
+df_BOE_sector_code.columns
+
+
+
+
+
+df_cust.columns
+
+
+
+
+
+# Merge data frame df_security and df_cust on columnIssuer ID and column Customer Identifier
+merged_df = pd.merge(df_security,df_cust[['Customer Identifier','Incorporation Code']],
+                      left_on='Issuer Id', right_on='Customer Identifier', how='left')
+
+# Drop the '#' column as it is not needed
+merged_df.drop(columns='Customer Identifier', inplace=True)
+
+# Rename columns and drop unnecessary column
+#merged_df.rename(columns={'S&P': 'Final Letter Rating'}, inplace=True)
+
+df_security= merged_df
+
+
+
+
+
+
+
+
+
+
+
+'''# Function to categorize based on conditions
+def categorize_corporate_institution(row):
+    if row['Incorporation Code'] == 'AE':
+        return 'Corporates'
+    elif row['Incorporation Code'] == 'QA' and row['Category'] == 'FIN':
+        return 'Corporates'
+    elif row['Category'] in ['FIN', 'SOV']:
+        return 'Institutions'
+    elif row['Category'] == 'GOV':
+        return 'Central governments/central banks'
+    elif row['Category'] == 'MDB':
+        return 'Multilateral developments banks'
+    
+    else:
+        return None  # Or any default value
+
+# Apply the categorization function to create a new column
+df_security['Corporate / Institution'] = df_security.apply(categorize_corporate_institution, axis=1)'''
+
+
+
+
+
+# Define a function to categorize based on conditions
+def categorize_corporate_institution(row):
+    if row['Incorporation Code'] == 'AE':
+        return 'Corporates'
+    elif row['Incorporation Code'] == 'QA' and row['Category'] == 'FIN':
+        return 'Corporates'
+    elif row['Category'] in ['FIN', 'SOV']:
+        return 'Institutions'
+    elif row['Category'] == 'GOV':
+        return 'Central governments/central banks'
+    elif row['Category'] == 'MDB':
+        return 'Multilateral developments banks'
+    else:
+        return 'Corporates'  # Default value
+
+# Apply the categorization function to create a new column
+df_security['Corporate / Institution'] = df_security.apply(categorize_corporate_institution, axis=1)
+
+
+
+
+
+# Create the 'Investment Combo' column by concatenating values from 'CQS', 'Corporate / Institution', and '3M < Residual Maturity > 3M'
+df_security['Investment Combo'] = df_security['CQS'] + '-' + df_security['Corporate / Institution'] + '-' + df_security['3M < Residual Maturity > 3M']
+
+
+
+
+
+#df_security.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/security.csv', index = False)
+
+
+
+
+
+df_rwlogic
+
+
+
+
+
+# Merge the DataFrames on 'Currency Code'
+
+df_security = df_security.merge(df_rwlogic, left_on='Investment Combo', right_on='Combination', how='left')
+
+
+
+
+
+# Remove the duplicate rows from the data frame
+
+df_security = df_security.drop_duplicates(keep='first')
+
+
+# ### Account Master
+
+
+
+
+def find_matching_lst_file(parent_folder):
+    """
+    Find the file in the given parent folder whose name starts with "acctMast" and has the extension ".LST".
+
+    Args:
+    parent_folder (str): Path of the parent folder.
+
+    Returns:
+    str: File path of the matching file, or None if no matching file is found.
+    """
+    files_in_folder = os.listdir(parent_folder)
+    matching_files = [file for file in files_in_folder if file.startswith("acctMast") and file.lower().endswith(".lst")]
+    
+    if matching_files:
+        lst_file_path = os.path.join(parent_folder, matching_files[0])
+        return lst_file_path
+    else:
+        return None
+
+
+# Ask for user input for the parent folder path
+#parent_folder = input("\nEnter the path of the parent folder: ")
+matching_file_path = find_matching_lst_file(parent_folder)
+
+if matching_file_path:
+    # Determine the CSV file path for saving
+    csv_file_path = os.path.splitext(matching_file_path)[0] + ".csv"
+
+    # Convert and save the file
+    with open(matching_file_path, 'r', encoding='utf-8', newline='') as lst_file, \
+            open(csv_file_path, 'w', encoding='utf-8', newline='') as csv_file:
+        reader = csv.reader(lst_file, delimiter='|')
+        writer = csv.writer(csv_file)
+
+        # Read and write the headers
+        headers = next(reader)
+        writer.writerow(headers)    
+
+        # Read and write the data rows
+        for row in reader:
+            writer.writerow(row)
+
+    print(f"\nFile '{matching_file_path}' converted to '{csv_file_path}'.")
+else:
+    print("\nNo matching file found in the parent folder.")
+    
+# Read the account master to a data frame 
+df_acctmast  = pd.read_csv(csv_file_path, index_col=False)
+
+
+
+
+
+# Account Master Filteration
+
+def process_file(csv_file_path):
+    """
+    Process a CSV file by extracting date from the file name and adding 36 days to the 'END DATE' column
+    when SCHM CODE is 'NSB15', 'NSB16', or 'NSB17'. Select desired columns and return the DataFrame.
+
+    Args:
+    csv_file_path (str): Path of the CSV file to process.
+
+    Returns:
+    pd.DataFrame: Processed DataFrame with selected columns.
+    """
+    # Load CSV into DataFrame
+    df_acctmast = pd.read_csv(csv_file_path, index_col=False)
+
+    # Extract date from file name and add 36 days
+    csv_file_name = csv_file_path.split("/")[-1]  # Extract the file name from the file path
+    date_regex = r"\d{4}-\d{2}-\d{2}"
+    date_match = re.search(date_regex, csv_file_name)
+
+    if date_match:
+        # Get the date string from the file name
+        date_str = date_match.group(0)
+
+        # Convert the date string to a date object
+        current_date = datetime.strptime(date_str, "%Y-%m-%d").date()
+
+        # Calculate the date after 35 days
+        new_date = current_date + timedelta(days=35)  # Includes the date of the file thus 36 days else 35 days
+
+        # Format the new date as dd-mm-yyyy
+        new_date_str = new_date.strftime("%d-%m-%Y")
+
+        # Update the "END DATE" column when SCHM CODE is 'NSB15', 'NSB16', or 'NSB17'
+        df_acctmast.loc[df_acctmast['SCHM CODE'].isin(['NSB15', 'NSB16', 'NSB17']), 'END DATE'] = new_date_str
+
+    # Select the desired columns
+    truncated_columns = df_acctmast[['SOL ID', 'ACCOUNT OWNERSHIP', 'GL SUB HEAD CODE',
+                                     'ACCT RPT CODE', 'ACCT NUMBER', 'ACCT NAME',
+                                     'CUSTOMER ID', 'ACCT CCY', 'SCHM CODE',
+                                     'SCHM TYPE', 'EOD BALANCE', 'EOD BALANCE(BILR)',
+                                     'CLR BAL AMT', 'UN CLR BAL AMT', 'FUTURE BAL AMT',
+                                     'ACCT OPN DATE', 'CR INT RATE', 'START DATE',
+                                     'END DATE', 'FREE CODE 6', 'FREE TEXT 1']]
+
+    # Put the selected columns in a Pandas DataFrame
+    truncated_columns = pd.DataFrame(truncated_columns)
+
+    return truncated_columns
+
+def filter_and_process(df):
+    """
+    Perform various filtering and processing operations on the DataFrame.
+
+    Args:
+    df (pd.DataFrame): Input DataFrame.
+
+    Returns:
+    pd.DataFrame: Processed DataFrame.
+    """
+    # Step 1: Filter rows where 'EOD BALANCE(BILR)' is not equal to zero
+    Column_L_filteration = df[df['EOD BALANCE(BILR)'] != 0]
+
+    # Step 2: Filter rows where 'GL SUB HEAD CODE' is not equal to the specified values
+    exclude_values = [80040, 80060, 80080, 85040, 85060, 85080, 89000]
+    Column_C_filteration = Column_L_filteration[~Column_L_filteration['GL SUB HEAD CODE'].isin(exclude_values)]
+
+    # Step 3: Create a new column named 'A/L'
+    Column_C_filteration['A/L'] = ''
+
+    # Step 4: Reorder the dataframe by 'GL SUB HEAD CODE' in ascending order
+    Column_C_filteration.sort_values(by='GL SUB HEAD CODE', inplace=True, ascending=True)
+
+    # Step 5: Assign 'A' or 'L' based on the values in 'EOD BALANCE(BILR)'
+    Column_C_filteration.loc[Column_C_filteration['EOD BALANCE(BILR)'] < 0, 'A/L'] = 'A'
+    Column_C_filteration.loc[Column_C_filteration['EOD BALANCE(BILR)'] >= 0, 'A/L'] = 'L'
+
+    # Step 6: Allocation based on the GL code 89020
+    filtered_89020 = Column_C_filteration[Column_C_filteration['GL SUB HEAD CODE'] == 89020]
+    balance_sum = filtered_89020['EOD BALANCE(BILR)'].sum()
+    Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'] == 89020, 'A/L'] = 'A' if balance_sum < 0 else 'L'
+
+    # Step 7: Filter the dataframe based on specific conditions
+    conditions = Column_C_filteration['GL SUB HEAD CODE'].isin([28020, 28030, 28050, 55020, 55030, 55050, 55070, 55100])
+    negative_balance = Column_C_filteration['EOD BALANCE(BILR)'] < 0
+    positive_balance = Column_C_filteration['EOD BALANCE(BILR)'] >= 0
+    Column_C_filteration.loc[conditions & negative_balance, 'A/L'] = 'A'
+    Column_C_filteration.loc[conditions & positive_balance, 'A/L'] = 'L'
+
+    # Step 8: Filter the dataframe based on specific conditions for GL SUB HEAD CODE and ACCT NUMBER
+    gl_sub_condition = Column_C_filteration['GL SUB HEAD CODE'] == 55070
+    acct_number_condition = Column_C_filteration['ACCT NUMBER'].isin([
+        61198265507010, 61198405507010, 61198265507009, 61199785507007,
+        61198405507007, 61198265507004, 61198405507001, 61198265507001
+    ])
+    Column_C_filteration.loc[gl_sub_condition & acct_number_condition, 'A/L'] = 'A'
+
+    gl_sub_condition_new = Column_C_filteration['GL SUB HEAD CODE'] == 28050
+    acct_number_condition_new = Column_C_filteration['ACCT NUMBER'].isin([
+        61198262805008, 61198402805008, 61198402805002, 61198262805002
+    ])
+    Column_C_filteration.loc[gl_sub_condition_new & acct_number_condition_new, 'A/L'] = 'A'
+
+    # Step 9: Filter the dataframe based on specific conditions for GL SUB HEAD CODE and ACCT NUMBER
+    mask = (Column_C_filteration['GL SUB HEAD CODE'] == 55100) & (
+            Column_C_filteration['ACCT NUMBER'].isin([61198265510002, 61198405510002])
+    )
+    filtered_data = Column_C_filteration[mask]
+
+    net_balance = filtered_data['EOD BALANCE(BILR)'].sum()
+    Column_C_filteration.loc[mask, 'A/L'] = 'A' if net_balance < 0 else 'L'
+
+    # Step 10: Filter the dataframe based on SCHM CODE values
+    Column_C_filteration.loc[Column_C_filteration['SCHM CODE'].isin(['INCOM', 'EXPEN', 'NSB15', 'NSB16', 'NSB17']), 'A/L'] = 'L'
+
+    # Step 11: Remove data where SCHM CODE is 'CONAS' or 'CONLI'
+    Column_C_filteration = Column_C_filteration[~Column_C_filteration['SCHM CODE'].isin(['CONAS', 'CONLI'])]
+
+    # Step 12: Update 'A/L' based on GL codes
+    gl_sub_head_codes_A = [10010, 12030, 12261, 14060, 16050, 16250, 21000, 21010, 21040,
+                           21510, 21520, 26000, 26010, 27000, 27010, 27040, 27050, 27070,
+                           27100, 27143, 38060, 38070, 54000, 54060, 58000, 89010, 52010,
+                           52030, 52040, 52070, 53000]
+    Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'].isin(gl_sub_head_codes_A), 'A/L'] = 'A'
+
+    gl_sub_head_codes_L = [30000, 31000, 34000, 36000, 36020, 36060, 36070, 38000, 38010,
+                           38030, 38040, 42000, 42010, 42610, 46050, 52010, 52030, 52040,
+                           52070, 53000, 54010, 54020, 54050, 59000, 60000, 62000, 62010,
+                           62020, 62030, 62040, 62060, 62070, 62080, 62090, 62100, 62110,
+                           63000, 63030, 64010, 64020, 64040, 64050, 64060, 64200, 64210,
+                           64300, 65000, 70000, 70030, 70050, 70060, 74020, 76000, 76010,
+                           76010, 76030, 76040, 76045, 76090, 76120, 76200, 78010, 78040,
+                           78050]
+    Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'].isin(gl_sub_head_codes_L), 'A/L'] = 'L'
+
+    # Step 13: Check for OD accounts and allocate 'A' or 'L'
+    od_condition = Column_C_filteration['SCHM CODE'].str.startswith('OD')
+    Column_C_filteration.loc[od_condition & (Column_C_filteration['EOD BALANCE(BILR)'] < 0), 'A/L'] = 'A'
+    Column_C_filteration.loc[od_condition & (Column_C_filteration['EOD BALANCE(BILR)'] >= 0), 'A/L'] = 'L'
+
+    # Convert date columns to datetime format
+    Column_C_filteration['ACCT OPN DATE'] = pd.to_datetime(Column_C_filteration['ACCT OPN DATE'], dayfirst=True).dt.strftime('%d/%m/%Y')
+    Column_C_filteration['START DATE'] = pd.to_datetime(Column_C_filteration['START DATE'], dayfirst=True).dt.strftime('%d/%m/%Y')
+    Column_C_filteration['END DATE'] = pd.to_datetime(Column_C_filteration['END DATE'], dayfirst=True).dt.strftime('%d/%m/%Y')
+
+    return Column_C_filteration
+
+# Usage:
+
+truncated_acctMast = process_file(csv_file_path)
+truncated_acctMast = filter_and_process(truncated_acctMast)
+
+
+
+
+
+# Get user input for the parent folder
+#destination_folder = input("Enter the parent folder path: ")
+
+# Create a new copy for the Assets and Liabilities
+Assets = truncated_acctMast[truncated_acctMast['A/L'] == 'A']
+Liabilities = truncated_acctMast[truncated_acctMast['A/L'] == 'L']
+
+
+
+
+
+Assets.info()
+
+
+
+
+
+# Convert the type of the column ACCT NUMBER from float 64 to int64
+
+Assets['ACCT NUMBER'] = Assets['ACCT NUMBER'].astype('int64')
+
+# Define the list of account numbers to be replaced
+acct_nums_to_replace = [
+    61198261406001, 61198401406001, 61198401406002, 61198261406002, 61198262805002,
+    61198402805008, 61198402805002, 61198262805008, 61198405406001, 61198265406001,
+    61198265507010, 61198405507010, 61198405507001, 61198265507001, 61198265507004,
+    61199785507007, 61198401605001, 61198401625001, 61198262100001
+]
+
+# Condition to check for the account numbers to replace
+condition = Assets['ACCT NUMBER'].isin(acct_nums_to_replace)
+
+# Update the 'BILR' column based on the condition
+Assets.loc[condition, 'EOD BALANCE(BILR)'] = 0
+
+
+
+
+
+# Define a dictionary to map DataFrame names to their corresponding variables
+data_frames = {
+    "Assets": Assets,
+    "Liabilites": Liabilities,
+    "Trunc_Account_Master": truncated_acctMast,
+    
+}
+
+# Loop through the dictionary and save each DataFrame as .txt and .csv files
+for file_name, data_frame in data_frames.items():
+    # Save as .txt file
+    txt_file_path = os.path.join(destination_folder, f"{file_name}.txt")
+    data_frame.to_csv(txt_file_path, sep=',', index=False)
+    
+    # Save as .csv file
+    txt_file_path = os.path.join(destination_folder, f"{file_name}.csv")
+    data_frame.to_csv(txt_file_path, sep=',', index=False)
+    
+    ## Save as .xlsx file
+    #txt_file_path = os.path.join(destination_folder, f"{file_name}.xlsx")
+    #data_frame.to_excel(txt_file_path,index=False)
+
+# Confirm the successful saving of the files
+print("DataFrames saved in both .txt and .csv formats in the provided folder.")
+
+
+
+
+
+#Assets.info()
+
+
+# ### BTL LTV File 
+
+
+
+
+def read_dependency_coding_file(parent_folder):
+    """
+    Read specific worksheets from the Excel file in the specified parent folder.
+
+    Args:
+    parent_folder (str): Path of the parent folder.
+
+    Returns:
+    tuple: Tuple containing DataFrames for each worksheet (ratings_df, df_BOE_sector_code, df_rwlogic).
+    """
+    # Find the file matching the specified pattern
+    file_pattern = os.path.join(parent_folder, 'FRP Data*.xlsx')
+    file_list = glob.glob(file_pattern)
+
+    if len(file_list) == 0:
+        print("No matching Excel file found.")
+        return None
+
+    # Assuming there's only one matching file, use the first one in the list
+    file_path = file_list[0]
+
+    # Use xlwings to load the Excel file
+    app = xw.App(visible=False)  # Create an Excel app instance (hidden)
+    wb = app.books.open(file_path)  # Open the Excel file
+
+    # Initialize DataFrames for each worksheet
+    df_frp_acc = None
+    df_frp_mortgage = None
+    
+
+    # Loop through each worksheet and load data into respective DataFrames
+    for sheet in wb.sheets:
+        if sheet.name == 'FRP-Account':
+            df_frp_acc = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+        elif sheet.name == 'FRP-Mortgage':
+            df_frp_mortgage = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+        #elif sheet.name == 'Risk Weight Logic':
+        #    df_rwlogic = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+
+    wb.close()  # Close the workbook
+    app.quit()  # Quit the Excel app
+
+    return df_frp_acc, df_frp_mortgage
+
+# Example usage:
+#parent_folder = "path/to/parent/folder"
+
+df_frp_acc, df_frp_mortgage = read_dependency_coding_file(parent_folder)
+#dfs = read_dependency_coding_file(parent_folder)
+
+if df_frp_acc is not None:
+    print("Capital Dependency data loaded successfully.")
+    # Proceed with using the DataFrames as needed
+else:
+    print("No Capital Dependency data loaded.")
+
+
+
+
+
+#df_frp_acc
+
+
+
+
+
+df_frp_acc.info()
+
+
+
+
+
+# Select the desired columns
+trunc_frp_col = df_frp_acc[['Account Number', 'Account Short Name', 'Account Status Description', 'Total Balance', 
+                            'Capital Balance','Months Since Active Arrears Start Date', 'Original Expiry Date','Loan Expiry Date', 'Redemption Date',
+                            'Inception Market Valuation', 'Original Loan Amount', 'Latest Valuation Date','Original LTV', 
+                            'Current LTV', 'Customer ID', 'Customer Type']]
+
+# Put the selected columns in a Pandas DataFrame
+trunc_df_frp_acc = pd.DataFrame(trunc_frp_col)
+
+#Remove all the negative and zero balances
+trunc_df_frp_acc = trunc_df_frp_acc[trunc_df_frp_acc['Total Balance']>0]
+
+# Loop through the dictionary and save each DataFrame as .txt and .csv files
+for file_ext in ['.txt', '.csv']:
+    # Construct the file path with the desired file name and extension
+    file_path = os.path.join(destination_folder, f"BTLLTV{file_ext}")
+
+    # Check the file extension and save accordingly
+    if file_ext == '.txt':
+        trunc_df_frp_acc.to_csv(file_path, sep=',', index=False)  # Save as .txt with comma-separated values
+    elif file_ext == '.csv':
+        trunc_df_frp_acc.to_csv(file_path, sep=',', index=False)  # Save as .csv
+
+# Confirm the successful saving of the files
+print("DataFrames saved in both .txt and .csv formats in the provided folder.")
+
+
+
+
+
+
+
+
+
+
+
+trunc_df_frp_acc.info()
+
+
+
+
+
+#Assets.columns
+
+
+# ### MM Placements File (Loand Dep)
+
+
+
+
+#df_repay.head(5)
+
+
+
+
+
+df_loandep.head(5)
+
+
+
+
+
+# Filter the DataFrame based on the conditions
+capital_df_loandep = df_loandep[~df_loandep['Product ID'].isin(['LAA', 'TDA'])]
+
+
+
+
+
+capital_df_loandep.info()
+
+
+
+
+
+# Convert the Date columns to date time format
+capital_df_loandep['Start Date'] = pd.to_datetime(capital_df_loandep['Start Date'], dayfirst=True)
+capital_df_loandep['Maturity Date'] = pd.to_datetime(capital_df_loandep['Maturity Date'], dayfirst=True)
+
+
+
+
+
+capital_df_loandep.info()
+
+
+
+
+
+# Merge the DataFrames on 'Currency Code'
+capital_df_loandep = capital_df_loandep.merge(df_exch, left_on='Currency', right_on='Currency Code', how='left')
+
+
+
+
+
+# Drop the column Currency code
+columns_to_drop = ['Currency Code']
+capital_df_loandep = capital_df_loandep.drop(columns=columns_to_drop)
+
+
+
+
+
+capital_df_loandep.info()
+
+
+
+
+
+# Define the comparison function
+def get_deal_status(start_date, date_obj):
+    return 'STARTED' if start_date <= date_obj else 'NOT STARTED'
+# Apply the function to create the 'Deal Status' column
+capital_df_loandep['Deal Status'] = capital_df_loandep.apply(lambda row: get_deal_status(row['Start Date'], date_obj), axis=1)
+
+
+
+
+
+#capital_df_loandep['Deal Status']
+
+
+
+
+
+# Coulumnd Principle Amount (GBP)
+
+def principal_amt_calc(row):
+    if row['Currency'] != 'GBP':
+        return round (row['Amount Currency'] / row['Exchange Rate'], 2)
+    else:
+        return (row['Amount Currency']).round(2)
+# Apply the  function  to create a new column
+capital_df_loandep['Principal Amount (GBP)'] = capital_df_loandep.apply(principal_amt_calc, axis=1)
+
+
+
+
+
+# Column Borrowing/Placement#
+
+def borrow_place(row):
+    if row['Amount Currency'] > 0:
+        return "Placement"
+    else:
+        return "Borrowing"
+
+# Apply the function to create a new column
+capital_df_loandep['Borrowing/PLacement'] = capital_df_loandep.apply(borrow_place, axis=1)
+
+
+
+
+
+capital_df_loandep['Residual Maturity Days'] = (capital_df_loandep['Maturity Date'] - date_obj).dt.days
+
+
+
+
+
+def categorize_rwmmp(row):
+    if row['Residual Maturity Days'] > 90:  # Greater than 90 days
+        return 0.5
+    else:  
+        return 0.2
+
+# Apply the categorization function to create a new column
+capital_df_loandep['RW_MMP'] = capital_df_loandep.apply(categorize_rwmmp, axis=1)
+
+
+
+
+
+capital_df_loandep
+
+
+
+
+
+def calculate_rw_exposure(row):
+    return row['Principal Amount (GBP)'] * row['RW_MMP']
+
+# Apply the function to create a new column 'RW_EXPOSURE'
+capital_df_loandep['RW_EXPOSURE'] = capital_df_loandep.apply(calculate_rw_exposure, axis=1)
+
+
+
+
+
+def calculate_rw_capital(row):
+    return row['RW_EXPOSURE'] * 0.08
+
+# Apply the function to create a new column 'RW_EXPOSURE'
+capital_df_loandep['REQ_Capital'] = capital_df_loandep.apply(calculate_rw_capital, axis=1)
+
+
+
+
+
+capital_df_loandep['ORG Maturity Days'] = (capital_df_loandep['Maturity Date'] - capital_df_loandep['Start Date']).dt.days
+
+
+
+
+
+capital_df_loandep.columns
+
+
+
+
+
+# Reorder/ Restructre the data frame by keeping only required/essential columns in the dataframe
+
+capital_df_loandep = capital_df_loandep[['Deal Reference', 'Cif id ','Currency', 'Amount Currency',
+                                        'Start Date','Maturity Date','Deal Status', 'Principal Amount (GBP)',
+                                         'Borrowing/PLacement', 'RW_MMP', 'RW_EXPOSURE', 'REQ_Capital',
+                                         'ORG Maturity Days', 'Residual Maturity Days']]
+
+
+
+
+
+#capital_df_loandep.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/calpitalLoandep1.csv', index = False)
+
+
+# ### Pipeline Tab
+
+
+
+
+def read_dependency_coding_file(parent_folder):
+    """
+    Read specific worksheets from the Excel file in the specified parent folder.
+
+    Args:
+    parent_folder (str): Path of the parent folder.
+
+    Returns:
+    tuple: Tuple containing DataFrames for each worksheet (ratings_df, df_BOE_sector_code, df_rwlogic).
+    """
+    # Find the file matching the specified pattern
+    file_pattern = os.path.join(parent_folder, 'Pipeline Summary Report*.xlsx')
+    file_list = glob.glob(file_pattern)
+
+    if len(file_list) == 0:
+        print("No matching Excel file found.")
+        return None
+
+    # Assuming there's only one matching file, use the first one in the list
+    file_path = file_list[0]
+
+    # Use xlwings to load the Excel file
+    app = xw.App(visible=False)  # Create an Excel app instance (hidden)
+    wb = app.books.open(file_path)  # Open the Excel file
+
+    # Initialize DataFrames for each worksheet
+    df_pipeline = None
+    #df_frp_mortgage = None
+    
+
+    # Loop through each worksheet and load data into respective DataFrames
+    for sheet in wb.sheets:
+        if sheet.name == 'Case Summary':
+            df_pipeline = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+        #elif sheet.name == 'FRP-Mortgage':
+        #    df_frp_mortgage = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+        #elif sheet.name == 'Risk Weight Logic':
+        #    df_rwlogic = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+
+    wb.close()  # Close the workbook
+    app.quit()  # Quit the Excel app
+
+    return df_pipeline
+
+# Example usage:
+#parent_folder = "path/to/parent/folder"
+
+df_pipeline = read_dependency_coding_file(parent_folder)
+#dfs = read_dependency_coding_file(parent_folder)
+
+if df_pipeline is not None:
+    print("Pipeline data loaded successfully.")
+    # Proceed with using the DataFrames as needed
+else:
+    print("Error in loading Pipeline data.")
+
+
+
+
+
+df_pipeline
+
+
+
+
+
+df_pipeline.columns
+
+
+
+
+
+# Filter the data frame to have only Legals Instruceted And COT received
+df_pipeline = df_pipeline[df_pipeline['Application Stage'].isin(['Legals Instructed', 'COT Received'])]
+
+
+
+
+
+df_pipeline['CCF'] = 0.2
+df_pipeline['RW'] = 0.35
+df_pipeline['Exposure Post CCF'] = df_pipeline['Advance']*0.2
+df_pipeline['RWA'] = df_pipeline['Advance']*0.2*0.35
+
+
+
+
+
+#df_pipeline.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/trial.csv', index = False)
+
+
+# ### Account Balance File
+
+
+
+
+def update_accbal_values(df_accbal):
+    """
+    Update values in DataFrame df_accbal based on a specified condition.
+
+    Args:
+    df_accbal (pd.DataFrame): DataFrame containing account balance data.
+
+    Returns:
+    pd.DataFrame: Updated DataFrame with modified values based on the condition.
+    """
+    # Condition to check for Cif id 800001122
+    condition = (
+        (df_accbal['Cif id '] == 800001122) &
+        (df_accbal['Account Number'] == 96306438) &
+        ((df_accbal['Risk Weight'] != 100) |
+        (df_accbal['Type of Asset'] != 'CORPORATE LOAN-NON CRE') |
+        (df_accbal['Secured/unsecured'] != 'SECURED') |
+        (df_accbal['Exposure Type'] != 'CORPORATE LOAN: NON PROPERTY'))
+    )
+
+    # Update the values based on the condition
+    df_accbal.loc[condition, ['Risk Weight', 'Type of Asset', 'Secured/unsecured', 'Exposure Type']] = [100, 'CORPORATE LOAN-NON CRE', 'SECURED', 'CORPORATE LOAN: NON PROPERTY']
+
+    return df_accbal
+
+# Usage:
+filtered_df_accbal = update_accbal_values(df_accbal)
+
+
+
+
+
+capital_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB Flag', 'Deal Reference',
+                                   'Investment Type', 'Trading Indicator', 'Encumbered Flag', 'Currency',
+                                   'Nominal Amount CCY', 'Principal Amount CCY', 'Market Value CCY', 'MTM',
+                                   'Coupon Rate', 'Accrued Interest CCY', 'Start Date', 'Maturity Date',
+                                   'Settlement Date', 'Fxd Flt Indicator', 'Next Reset Date','Security ID',
+                                   'LAB Indicator', 'HQ Indicator','Senior Tranche Indicator', 'Issued/purchased flag',
+                                   'USGS Indicator','LTST Indicator', 'Own Funds Indicator', 'Own Funds Amount',
+                                   'Rehypothetication Indicator', 'Watch List Indicator','Default Indicator',
+                                   'LCR Government Protected Indicator','LCRGteeIntOrgID', 'LCRIntOrgID',
+                                   'LCRRequirementsMet','LiquidAssetQualityType', 'LiquidFacilityType', 'Notional Amount',
+                                   'OtherLCRLiabilities', 'OtherTransAssets', 'Short Term Moody',
+                                   'Long Term Moody', 'Short Term Fitch', 'Long Term Fitch','Short Term S P',
+                                   'Long Term S P', 'Purchase Cost', 'Purchase Price','Risk Weight', 'PD external',
+                                   'LGD External', 'PD Internal','LGD INTERNAL', 'MTM GBP', 'Principle GBP','Book Value GBP',
+                                   'Residual Maturity Days','Sector Code','Category','Moodys Number', 'Fitch Number',
+                                   'S&P Number','Final Rating', 'Final Letter Rating', 'CQS','Incorporation Code',
+                                   'Corporate / Institution', 'Investment Combo','RW', 'Customer Name']]
+
+
+
+
+
+# Group the DataFrame by 'Product Type' and calculate the sum of 'Balance BILR'
+#az = capital_security.groupby('Product Type')['Book Value GBP'].sum().reset_index()
+#az
+
+
+
+
+
+
+
+
+# ### Capital file Operation
+
+
+
+
+# Find the file matching the specified pattern
+file_pattern = os.path.join(parent_folder, 'New File_Capital RWA*.xlsx')
+file_list = glob.glob(file_pattern)
+
+if len(file_list) == 0:
+    print("No matching Excel file found.")
+    #return None
+
+# Assuming there's only one matching file, use the first one in the list
+file_path = file_list[0]
+
+# Open the Excel workbook and make Excel visible
+app = xw.App(visible=True)
+capital_file_wb = app.books.open(file_path)
+
+# Print the names of all worksheets
+print("Worksheets in the workbook:")
+for sheet in capital_file_wb.sheets:
+    print(sheet.name)
+
+
+
+
+
+# Update the Worksheet named Assets
+
+def write_assets_to_worksheet(ws, df, start_row=5, start_column=1):
+    """
+    Write data from a DataFrame to a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to write data to.
+    df (pd.DataFrame): DataFrame containing the data to be written.
+    start_row (int): Starting row for writing data. Default is 5.
+    start_column (int): Starting column for writing data. Default is 1.
+
+    Returns:
+    None
+    """
+    # Get the range starting from the specified row and column
+    end_row = start_row + len(df) - 1  # Number of rows based on DataFrame length
+    end_column = start_column + df.shape[1] - 1  # Number of columns based on DataFrame shape
+    range_to_clear = ws.range((start_row, start_column), (end_row, end_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = df.values
+
+# Example usage:
+# Assuming ws_capital_asset and Assets are already defined
+ws_capital_asset = capital_file_wb.sheets["Assets"]
+
+# Define the columns to keep in the subset
+columns_to_keep = ['SOL ID', 'ACCOUNT OWNERSHIP', 'GL SUB HEAD CODE', 'ACCT RPT CODE',
+                   'ACCT NUMBER', 'ACCT NAME', 'CUSTOMER ID', 'ACCT CCY', 'SCHM CODE',
+                   'SCHM TYPE', 'EOD BALANCE(BILR)']
+
+# Extract only the desired columns from the Assets DataFrame
+assets_subset = Assets[columns_to_keep]
+
+# Use the defined function to write the subset to the worksheet
+write_assets_to_worksheet(ws_capital_asset, assets_subset)
+
+
+
+
+
+Assets
+
+
+
+
+
+'''# Select the worksheet named "Lombard Repay"
+ws_capital_asset = wb.sheets["Assets"]
+
+# Get the range starting from the 5th row
+start_row = 5
+start_column = 1  # Assuming you want to start from the first column
+end_row = ws_capital_asset.api.Rows.Count
+end_column = 11
+range_to_clear = ws_capital_asset.range((start_row, start_column), (end_row, end_column))
+
+# Clear the contents of the range
+range_to_clear.clear_contents()
+
+# Extract only the desired columns from the Assets DataFrame
+columns_to_keep = ['SOL ID', 'ACCOUNT OWNERSHIP', 'GL SUB HEAD CODE', 'ACCT RPT CODE',
+                   'ACCT NUMBER', 'ACCT NAME', 'CUSTOMER ID', 'ACCT CCY', 'SCHM CODE',
+                   'SCHM TYPE','EOD BALANCE(BILR)']
+assets_subset = Assets[columns_to_keep]
+
+# Write the data (excluding headers) to the worksheet
+ws_capital_asset.range("A5").value = assets_subset.values'''
+
+
+
+
+
+df_limit.info()
+
+
+
+
+
+# Update the Worksheet named LimitSub
+
+def write_capital_limit_to_worksheet(ws, df, start_row=6, start_column=1, end_column=16):
+    """
+    Write data from a DataFrame to a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to write data to.
+    df (pd.DataFrame): DataFrame containing the data to be written.
+    start_row (int): Starting row for writing data. Default is 6.
+    start_column (int): Starting column for writing data. Default is 1.
+
+    Returns:
+    None
+    """
+    
+    # Get the range starting from the specified row and column
+    end_row = start_row + len(df) - 1  # Number of rows based on DataFrame length
+    #end_column = start_column + df.shape[1] - 1  # Number of columns based on DataFrame shape
+    range_to_clear = ws.range((start_row, start_column), (end_row, end_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = df.values
+
+# Example usage:
+# Assuming ws_capital_limit is the worksheet named "LimitSub"
+ws_capital_limit = capital_file_wb.sheets["LimitSub"]
+
+# Filter the DataFrame based on the conditions
+capital_df_limit = df_limit[(df_limit['Reference Code'] == "CEL05") | (df_limit['Reference Code'] == "CEL06")]
+
+# Define the columns to keep in the subset
+columns_to_keep = ['Branch id', 'Customer Identifier', 'Deal Reference', 'Reference Code',
+                   'Facility / Commitment Type', 'Parent Limit', 'Currency Code',
+                   'Facility Amount', 'Undrawn Amount', 'Comitted / Uncomitted','Start Date',
+                   'Maturity Date', 'Secured/Unsecured indicator','Pipeline Indicator','Scheme Code', 'CCF']
+
+# Extract only the desired columns from the Assets DataFrame
+limit_subset = capital_df_limit[columns_to_keep]
+
+# Use the defined function to write the subset to the worksheet
+write_capital_limit_to_worksheet(ws_capital_limit, limit_subset)
+
+
+
+
+
+
+
+
+
+
+
+def write_capital_MMP_to_worksheet(ws, start_row=6, start_column=2):
+    """
+    Clear the contents of a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to clear.
+    start_row (int): Starting row for clearing data. Default is 6.
+    start_column (int): Starting column for clearing data. Default is 1.
+
+    Returns: the new values from data frame capital_df_loandep
+    None
+    """
+    # Get the last used row and column
+    last_row = ws.cells.last_cell.row
+    last_column = ws.cells.last_cell.column
+
+    # Get the range starting from the specified row and column to the last row and column
+    range_to_clear = ws.range((start_row, start_column), (last_row, last_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = capital_df_loandep.values
+
+# Example usage:
+# Assuming ws_MMP is the worksheet named "MM Placements"
+ws_MMP = capital_file_wb.sheets["MM Placements"]
+
+# Clear the worksheet starting from the 6th row across all columns
+write_capital_MMP_to_worksheet(ws_MMP)
+
+
+
+
+
+df_security
+
+
+
+
+
+def clear_and_write_data_to_sheet(ws, df, start_row=5, start_column=1, end_column=72):
+    """
+    Clear the contents of a range in a specified worksheet and write DataFrame data to the worksheet.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to write data to.
+    df (pd.DataFrame): DataFrame containing the data to be written.
+    start_row (int): Starting row for writing data. Default is 5.
+    start_column (int): Starting column for writing data. Default is 1.
+
+    Returns:
+    None
+    """
+    # Get the range starting from the specified row and column
+    end_row = start_row + len(df) - 1  # Number of rows based on DataFrame length
+    #end_column = start_column + df.shape[1] - 1  # Number of columns based on DataFrame shape
+    range_to_clear = ws.range((start_row, start_column), (end_row, end_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    capital_df_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB Flag', 'Deal Reference',
+                                   'Investment Type', 'Trading Indicator', 'Encumbered Flag', 'Currency',
+                                   'Nominal Amount CCY', 'Principal Amount CCY', 'Market Value CCY', 'MTM',
+                                   'Coupon Rate', 'Accrued Interest CCY', 'Start Date', 'Maturity Date',
+                                   'Settlement Date', 'Fxd Flt Indicator', 'Next Reset Date','Security ID',
+                                   'LAB Indicator', 'HQ Indicator','Senior Tranche Indicator', 'Issued/purchased flag',
+                                   'USGS Indicator','LTST Indicator', 'Own Funds Indicator', 'Own Funds Amount',
+                                   'Rehypothetication Indicator', 'Watch List Indicator','Default Indicator',
+                                   'LCR Government Protected Indicator','LCRGteeIntOrgID', 'LCRIntOrgID',
+                                   'LCRRequirementsMet','LiquidAssetQualityType', 'LiquidFacilityType', 'Notional Amount',
+                                   'OtherLCRLiabilities', 'OtherTransAssets', 'Short Term Moody',
+                                   'Long Term Moody', 'Short Term Fitch', 'Long Term Fitch','Short Term S P',
+                                   'Long Term S P', 'Purchase Cost', 'Purchase Price','Risk Weight', 'PD external',
+                                   'LGD External', 'PD Internal','LGD INTERNAL', 'MTM GBP', 'Principle GBP','Book Value GBP',
+                                   'Residual Maturity Days','Sector Code','Category','Moodys Number', 'Fitch Number',
+                                   'S&P Number','Final Rating', 'Final Letter Rating', 'CQS','Incorporation Code',
+                                   'Corporate / Institution', 'Investment Combo','RW', 'Customer Name']]
+
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = capital_df_security.values
+
+def refresh_pivot_table(ws, pivot_table_name):
+    """
+    Refresh a pivot table in a specified worksheet.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet containing the pivot table.
+    pivot_table_name (str): Name of the pivot table to refresh.
+
+    Returns:
+    None
+    """
+
+    # Get the pivot table object
+    pivot_table = ws.api.PivotTables(pivot_table_name)
+
+    # Refresh the pivot table
+    pivot_table.RefreshTable()
+
+# Example usage:
+# Assuming capital_file_wb is the Excel workbook and df_security contains the data
+# parent_folder = "path/to/parent/folder"
+# df_security = ...  # Define or read your DataFrame
+
+# Open the Excel workbook
+#capital_file_wb = xw.Book("path/to/your/workbook.xlsx")
 
 # Select the worksheet named "Lombard Security"
-ws_security = wb.sheets["Lombard Security"]
+ws_security = capital_file_wb.sheets["Lombard Security"]
 
-# Select the worksheet named "Security Portfolio"
-ws_sec_portfolio = wb.sheets["Security Portfolio"]
+# Clear existing data and write new data to the worksheet
+clear_and_write_data_to_sheet(ws_security, df_security)
 
-# Select the worksheet named "Lombard FSCS"
-ws_fscs = wb.sheets["Lombard FSCS"]
-
-# Select the worksheet named "Lombard FX"
-ws_fx = wb.sheets["Lombard FX"]
-
-# Select the worksheet named "Lombard Derivatives"
-ws_derivatives = wb.sheets["Lombard Derivatives"]
-
-# Select the worksheet named "Lombard GL Bala"
-ws_gl_bal = wb.sheets["Lombard GL Bala"]
+# Refresh the pivot table in the same worksheet
+pivot_table_name = "PivotTable1"  # Adjust with the actual pivot table name
+refresh_pivot_table(ws_security, pivot_table_name)
 
 
-# Paste the data from the data-frames to the worksheets
+
+
+
+def write_custfile_to_worksheet(ws, start_row=2, start_column=1):
+    """
+    Clear the contents of a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to clear.
+    start_row (int): Starting row for clearing data. Default is 2.
+    start_column (int): Starting column for clearing data. Default is 1.
+
+    Returns: the new values from data frame capital_df_loandep
+    None
+    """
+    # Get the last used row and column
+    last_row = ws.cells.last_cell.row
+    last_column = ws.cells.last_cell.column
+
+    # Get the range starting from the specified row and column to the last row and column
+    range_to_clear = ws.range((start_row, start_column), (last_row, last_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = df_cust.values
+
+# Example usage:
+# Assuming ws_cust is the worksheet named "Lombard Cust"
+ws_cust = capital_file_wb.sheets["Lombard Cust"]
+
+# Clear the worksheet starting from the 6th row across all columns
+write_custfile_to_worksheet(ws_cust)
+
+
+
+
+
+def write_BTLLTV_to_worksheet(ws, start_row=3, start_column=1, end_column=16 ):
+    """
+    Clear the contents of a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to clear.
+    start_row (int): Starting row for clearing data. Default is 2.
+    start_column (int): Starting column for clearing data. Default is 1.
+
+    Returns: the new values from data frame capital_df_loandep
+    None
+    """
+    # Get the last used row and column
+    last_row = ws.cells.last_cell.row
+    #last_column = ws.cells.last_cell.column
+
+    # Get the range starting from the specified row and column to the last row and column
+    range_to_clear = ws.range((start_row, start_column), (last_row, end_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = trunc_df_frp_acc.values
+
+# Example usage:
+# Assuming ws_MMP is the worksheet named "MM Placements"
+ws_btl_ltv = capital_file_wb.sheets["BTL LTV"]
+
+# Clear the worksheet starting from the 6th row across all columns
+write_BTLLTV_to_worksheet(ws_btl_ltv)
+
+
+def write_loand_dep_to_worksheet(ws, start_row=2, start_column=1):
+    """
+    Clear the contents of a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to clear.
+    start_row (int): Starting row for clearing data. Default is 2.
+    start_column (int): Starting column for clearing data. Default is 1.
+
+    Returns: the new values from data frame capital_df_loandep
+    None
+    """
+    # Get the last used row and column
+    last_row = ws.cells.last_cell.row
+    last_column = ws.cells.last_cell.column
+
+    # Get the range starting from the specified row and column to the last row and column
+    range_to_clear = ws.range((start_row, start_column), (last_row, last_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = df_loandep.values
+
+# Example usage:
+# Assuming ws_loan_dep is the worksheet named "Lombard Loan Dep Report"
+ws_loan_dep = capital_file_wb.sheets["Lombard Loan Dep Report"]
+
+# Clear the worksheet starting from the 6th row across all columns
+write_loand_dep_to_worksheet(ws_loan_dep)
+
+
+
+
+
+def write_accbal_to_worksheet(ws, start_row=2, start_column=1):
+    """
+    Clear the contents of a specified worksheet starting from a given cell.
+
+    Args:
+    ws (xlwings.Sheet): Worksheet to clear.
+    start_row (int): Starting row for clearing data. Default is 2.
+    start_column (int): Starting column for clearing data. Default is 1.
+
+    Returns: the new values from data frame capital_df_loandep
+    None
+    """
+    # Get the last used row and column
+    last_row = ws.cells.last_cell.row
+    last_column = ws.cells.last_cell.column
+
+    # Get the range starting from the specified row and column to the last row and column
+    range_to_clear = ws.range((start_row, start_column), (last_row, last_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = filtered_df_accbal.values
+
+# Example usage:
+# Assuming ws_accbal is the worksheet named "Lombard Account Balance Report_"
+ws_accbal = capital_file_wb.sheets["Lombard Account Balance Report_"]
+
+# Clear the worksheet starting from the 6th row across all columns
+write_accbal_to_worksheet(ws_accbal)
+
+
+
+
+
+'''# Select the worksheet named "Lombard Repay"
+ws_exch = capital_file_wb.sheets["Date_ExchRates"]
+
+# Validate the date format
+try:
+    # Convert the input string to a datetime object
+    #date = datetime.strptime(date_str, '%d/%m/%Y')
+    # Write the date to cell E5 of the worksheet
+    #ws_72.range('E5').value = date
+    ws_exch.range('A1').value = date_obj
+    print("Date successfully entered in cell A1.")
+except ValueError:
+    print("Invalid date format. Please enter the date in dd/mm/yyyy format.")
+    
+    
+    
+After this delete the values from column C starting from row 6'''
+
+
+
+
+
+def write_exch_to_worksheet(wb, sheet_name, date_obj, df_exch):
+    """
+    Enter a date in cell A1 of the specified worksheet and clear values in column C starting from row 6.
+
+    Args:
+    wb (xlwings.Book): Excel workbook object.
+    sheet_name (str): Name of the worksheet where operations will be performed.
+    date_obj (datetime.datetime): Date object to be entered in cell A1.
+
+    Returns:
+    None
+    """
+    # Select the worksheet
+    ws_exch = wb.sheets[sheet_name]
+
+    try:
+        # Write the date to cell A1 of the worksheet
+        ws_exch.range('A1').value = date_obj
+        print("Date successfully entered in cell A1.")
+
+        # Get the range starting from row 6 in column C
+        start_row = 6
+        start_column = 3  # Column C
+        end_row = start_row + len(df_exch) - 1  # Calculate the end row based on DataFrame length
+        range_to_clear = ws_exch.range((start_row, start_column), (end_row, start_column))
+
+
+        # Clear the contents of the range
+        range_to_clear.clear_contents()
+        
+        # Paste values from the 'Exchange Rate' column to column C starting from row 6
+        for i, rate in enumerate(df_exch['Exchange Rate'], start=start_row):
+            ws_exch.range((i, start_column)).value = rate
+    except Exception as e:
+        print(f"Error: {e}")
+
+# Usage:
+        
+# Call the function
+write_exch_to_worksheet(capital_file_wb, "Date_ExchRates", date_obj, df_exch)
+
+# Calculate all formulas in the workbook
+#app.calculate()
+
+# Save the workbook
+capital_file_wb.save()
+
+# Close the workbook
+capital_file_wb.close()
+#app.quit()
+
+# Record the end time
+enditime = time.time()
+
+# Calculate the elapsed time
+elapsed_time = enditime - start_time
+
+# Convert elapsed time to a human-readable format
+hours, rem = divmod(elapsed_time, 3600)
+minutes, seconds = divmod(rem, 60)
+
+# Display the time taken
+print("Total Time taken: {:0>2}:{:0>2}:{:05.2f}".format(int(hours), int(minutes), seconds))
+
+# Convert elapsed time to a human-readable format
+lcr_hours, lcr_rem = divmod(LCR_completion_time, 3600)
+lcr_minutes, lcr_seconds = divmod(rem, 60)
+
+# Display the time taken
+print("Time taken for LCR File: {:0>2}:{:0>2}:{:05.2f}".format(int(lcr_hours), int(lcr_minutes), lcr_seconds))
+
+'''import xlwings as xw
+
+def write_exch_to_worksheet(wb, sheet_name, date_obj, df_exch):
+    """
+    Enter a date in cell A1 of the specified worksheet, clear values in column C starting from row 6,
+    and paste values from the 'Exchange Rate' column of df_exch to the cleared range.
+
+    Args:
+    wb (xlwings.Book): Excel workbook object.
+    sheet_name (str): Name of the worksheet where operations will be performed.
+    date_obj (datetime.datetime): Date object to be entered in cell A1.
+    df_exch (pd.DataFrame): DataFrame containing the 'Exchange Rate' column data.
+
+    Returns:
+    None
+    """
+    # Select the worksheet
+    ws_exch = wb.sheets[sheet_name]
+
+    try:
+        # Write the date to cell A1 of the worksheet
+        ws_exch.range('A1').value = date_obj
+        print("Date successfully entered in cell A1.")
+
+        # Get the range starting from row 6 in column C
+        start_row = 6
+        start_column = 3  # Column C
+        end_row = ws_exch.api.Rows.Count
+        range_to_clear = ws_exch.range((start_row, start_column), (end_row, start_column))
+
+        # Clear the contents of the range
+        range_to_clear.clear_contents()
+        print("Values cleared from column C starting from row 6.")
+
+        # Calculate the end row based on the DataFrame size
+        end_row_df = start_row + len(df_exch)
+
+        # Write the 'Exchange Rate' column values to the worksheet
+        ws_exch.range((start_row, start_column)).value = df_exch['Exchange Rate'].values
+        print(f"Exchange rates pasted from row {start_row} to {end_row_df - 1} in column C.")
+    except Exception as e:
+        print(f"Error: {e}")
+
+# Example usage:
+# Assuming capital_file_wb is your Excel workbook object, date_obj is the datetime object, and df_exch is your DataFrame
+# capital_file_wb = xw.Book("path/to/your/file.xlsx")
+# date_obj = datetime.datetime(2024, 4, 11)
+# df_exch = ...
+
+# Call the function
+# write_exch_to_worksheet(capital_file_wb, "Date_ExchRates", date_obj, df_exch)'''
+
+
+
+
+
+'''# Select the worksheet named "Lombard Repay"
+ws_security = capital_file_wb.sheets["Lombard Security"]
+
+# Get the range starting from the 5th row
+start_row = 5
+start_column = 1  # Assuming you want to start from the first column
+end_row = ws_security.api.Rows.Count
+end_column = 72
+range_to_clear = ws_security.range((start_row, start_column), (end_row, end_column))
+
+# Clear the contents of the range
+range_to_clear.clear_contents()
+
+capital_df_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB Flag', 'Deal Reference',
+                                   'Investment Type', 'Trading Indicator', 'Encumbered Flag', 'Currency',
+                                   'Nominal Amount CCY', 'Principal Amount CCY', 'Market Value CCY', 'MTM',
+                                   'Coupon Rate', 'Accrued Interest CCY', 'Start Date', 'Maturity Date',
+                                   'Settlement Date', 'Fxd Flt Indicator', 'Next Reset Date','Security ID',
+                                   'LAB Indicator', 'HQ Indicator','Senior Tranche Indicator', 'Issued/purchased flag',
+                                   'USGS Indicator','LTST Indicator', 'Own Funds Indicator', 'Own Funds Amount',
+                                   'Rehypothetication Indicator', 'Watch List Indicator','Default Indicator',
+                                   'LCR Government Protected Indicator','LCRGteeIntOrgID', 'LCRIntOrgID',
+                                   'LCRRequirementsMet','LiquidAssetQualityType', 'LiquidFacilityType', 'Notional Amount',
+                                   'OtherLCRLiabilities', 'OtherTransAssets', 'Short Term Moody',
+                                   'Long Term Moody', 'Short Term Fitch', 'Long Term Fitch','Short Term S P',
+                                   'Long Term S P', 'Purchase Cost', 'Purchase Price','Risk Weight', 'PD external',
+                                   'LGD External', 'PD Internal','LGD INTERNAL', 'MTM GBP', 'Principle GBP','Book Value GBP',
+                                   'Residual Maturity Days','Sector Code','Category','Moodys Number', 'Fitch Number',
+                                   'S&P Number','Final Rating', 'Final Letter Rating', 'CQS','Incorporation Code',
+                                   'Corporate / Institution', 'Investment Combo','RW', 'Customer Name']]
 
 # Write the data (excluding headers) to the worksheet
-ws_cust.range("A2").value = df_cust.values
+ws_security.range("A5").value = capital_df_security.values
 
-# Write the data (excluding headers) to the worksheet
-ws_repay.range("A5").value = df_repay.values
+# Assuming ws_security is the worksheet containing the pivot table
+pivot_table_name = "PivotTable1"  # Adjust with the actual pivot table name
 
-# Write the data (excluding headers) to the worksheet
-ws_security.range("A2").value = df_security.values
+# Get the pivot table object
+pivot_table = ws_security.api.PivotTables(pivot_table_name)
 
-# Write the data (excluding headers) to the worksheet
-ws_sec_portfolio.range("A2").value = df_securityportfolio_copy.values
+# Refresh the pivot table
+pivot_table.RefreshTable()
+'''
 
-# Write the data (excluding headers) to the worksheet
-ws_fscs.range("A5").value = df_FSCSSUB.values
+'''# Find rows that are duplicates across all columns
+duplicate_rows = df_security[df_security.duplicated(keep=False)]
+duplicate_rows'''
 
-# Write the data (excluding headers) to the worksheet
-ws_fx.range("A2").value = df_fxdeals.values
-
-# Write the data (excluding headers) to the worksheet
-ws_derivatives.range("A2").value = df_derivative.values
-
-# Write the data (excluding headers) to the worksheet
-ws_gl_bal.range("A2").value = df_glbal.values'''
