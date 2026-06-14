@@ -31,6 +31,7 @@ try:
     if not os.path.isdir(parent_folder):
         raise FileNotFoundError(f"The directory '{parent_folder}' does not exist.")
 
+
     # Get a list of all files in the parent folder
     all_files = os.listdir(parent_folder)
 
@@ -102,7 +103,7 @@ if os.path.exists(file_path):
     # Read the Excel file into a DataFrame
     Logic_for_Deposit_Outflows_df = pd.read_excel(file_path)
 
-else:
+else: 
     print(f"The file '{file_name}' does not exist in the specified folder.")
 '''
 
@@ -2549,6 +2550,7 @@ def read_dependency_coding_file(parent_folder, file_name='Capital_Dashboard_Depe
         #code_desc_df = None
         #acc_desc_df = None
         #schm_desc_df = None
+        df_Inst_Y_N = None
 
         # Loop through each worksheet and load data into respective DataFrames
         for sheet in wb.sheets:
@@ -2558,22 +2560,22 @@ def read_dependency_coding_file(parent_folder, file_name='Capital_Dashboard_Depe
                 df_BOE_sector_code = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
             elif sheet.name == 'Risk Weight Logic':
                 df_rwlogic = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
-            #elif sheet.name == 'Scheme Code Description':
-            #    schm_desc_df = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+            elif sheet.name == 'Inst Y_N':
+                df_Inst_Y_N = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
             #elif sheet.name == 'MPC Dates':
             #    mpc_df = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
 
         wb.close()  # Close the workbook
         app.quit()  # Quit the Excel app
         
-        return df_rating, df_BOE_sector_code,df_rwlogic
+        return df_rating, df_BOE_sector_code,df_rwlogic, df_Inst_Y_N
     
     else:
         print(f"The file '{file_name}' does not exist in the specified folder.")
         return None
 
-# Example usage:
-df_rating, df_BOE_sector_code,df_rwlogic = read_dependency_coding_file(parent_folder)
+# CAll the Function:
+df_rating, df_BOE_sector_code,df_rwlogic, df_Inst_Y_N = read_dependency_coding_file(parent_folder)
 
 if df_rating is not None:
     print("Capital Dependency data loaded successfully.")
@@ -2846,6 +2848,15 @@ merged_df.drop(columns='Customer Identifier', inplace=True)
 
 df_security= merged_df
 
+# truncate the Inst_y_n to select specific column 
+trunc_inst_Y_N = df_Inst_Y_N[['CODE', 'Institution elig']]
+
+# Merge The trunc_inst_Y_N and df_security 
+df_security = df_security.merge(trunc_inst_Y_N,left_on= 'Incorporation Code',right_on='CODE')
+
+# drop the unwantedcolumn
+df_security.drop(columns=['CODE'], inplace= True)
+
 
 '''# Function to categorize based on conditions
 def categorize_corporate_institution(row):
@@ -2868,6 +2879,8 @@ df_security['Corporate / Institution'] = df_security.apply(categorize_corporate_
 
 
 # Define a function to categorize based on conditions
+'''
+ # Old Logic which  works in version 2.2.5
 def categorize_corporate_institution(row):
     if row['Incorporation Code'] == 'AE':
         return 'Corporates'
@@ -2880,8 +2893,19 @@ def categorize_corporate_institution(row):
     elif row['Category'] == 'MDB':
         return 'Multilateral developments banks'
     else:
-        return 'Corporates'  # Default value
+        return 'Corporates'  # Default value'''
 
+def categorize_corporate_institution(row):
+    if row['Category'] in ['NON FIN', 'Corp']:
+        return 'Corporates'
+    elif row['Category'] == 'GOV':
+        return 'Central governments/central banks'
+    elif row['Category'] == 'MDB':
+        return 'Multilateral developments banks'
+    elif row['Institution elig'] == 'Y':
+        return 'Institution'
+    else:
+        return 'Corporates'  # Default value
 # Apply the categorization function to create a new column
 df_security['Corporate / Institution'] = df_security.apply(categorize_corporate_institution, axis=1)
 
@@ -2903,6 +2927,9 @@ df_security = df_security.merge(df_rwlogic, left_on='Investment Combo', right_on
 # Remove the duplicate rows from the data frame
 
 df_security = df_security.drop_duplicates(keep='first')
+
+
+
 
 
 # ### Account Master
@@ -3464,14 +3491,41 @@ capital_df_loandep['Borrowing/PLacement'] = capital_df_loandep.apply(borrow_plac
 
 capital_df_loandep['Residual Maturity Days'] = (capital_df_loandep['Maturity Date'] - date_obj).dt.days
 
+# Ensure Customer Identifier and Counterparty Name are consistent for lookups
+df_cust['Customer Identifier'] = df_cust['Customer Identifier'].astype(str)
+capital_df_loandep['Cif id '] = capital_df_loandep['Cif id '].astype(str)
+
+# Merge df_cust for Sector Code, Residency Code, and Incorporation Code
+capital_df_loandep = capital_df_loandep.merge(
+    df_cust[['Customer Identifier', 'Sector Code', 'Residency Code', 'Incorporation Code']],
+    left_on='Cif id ',
+    right_on='Customer Identifier',
+    how='left'
+)
+# Apply conditional logic for Country Code
+capital_df_loandep['Country Code'] = capital_df_loandep.apply(
+    lambda row: row['Residency Code'] if row['Sector Code'] == 3500 else row['Incorporation Code'],
+    axis=1
+)
+
+# Merge The trunc_inst_Y_N and df_security 
+capital_df_loandep = capital_df_loandep.merge(trunc_inst_Y_N,left_on= 'Country Code', right_on='CODE')
+
+# drop the unwantedcolumn
+capital_df_loandep.drop(columns=['CODE','Residency Code', 'Incorporation Code'], inplace= True)
+
+
 def categorize_rwmmp(row):
-    if row['Residual Maturity Days'] > 90:  # Greater than 90 days
+    if row['Institution elig'] == 'N':
+        return 1
+    elif row['Residual Maturity Days'] > 90:  # Greater than 90 days
         return 0.5
-    else:  
+    elif row['Residual Maturity Days'] <= 90:  
         return 0.2
 
 # Apply the categorization function to create a new column
 capital_df_loandep['RW_MMP'] = capital_df_loandep.apply(categorize_rwmmp, axis=1)
+
 #capital_df_loandep
 
 def calculate_rw_exposure(row):
@@ -3490,12 +3544,15 @@ capital_df_loandep['ORG Maturity Days'] = (capital_df_loandep['Maturity Date'] -
 #capital_df_loandep.columns
 
 
+
+
+
 # Reorder/ Restructre the data frame by keeping only required/essential columns in the dataframe
 
 capital_df_loandep = capital_df_loandep[['Deal Reference', 'Cif id ','Currency', 'Amount Currency',
                                         'Start Date','Maturity Date','Deal Status', 'Principal Amount (GBP)',
                                          'Borrowing/PLacement', 'RW_MMP', 'RW_EXPOSURE', 'REQ_Capital',
-                                         'ORG Maturity Days', 'Residual Maturity Days']]
+                                         'ORG Maturity Days', 'Residual Maturity Days','Sector Code','Country Code','Institution elig']]
 
 # Sorting the DataFrame in descending order based on 'Amount Currency'
 capital_df_loandep = capital_df_loandep.sort_values(by='Amount Currency', ascending=False)
@@ -3905,7 +3962,7 @@ write_capital_MMP_to_worksheet(ws_MMP)
 
 #df_security
 
-def clear_and_write_data_to_sheet(ws, df, start_row=5, start_column=1, end_column=72):
+def clear_and_write_data_to_sheet(ws, df, start_row=5, start_column=1, end_column=73):
     """
     Clear the contents of a range in a specified worksheet and write DataFrame data to the worksheet.
 
@@ -3942,7 +3999,7 @@ def clear_and_write_data_to_sheet(ws, df, start_row=5, start_column=1, end_colum
                                    'LGD External', 'PD Internal','LGD INTERNAL', 'MTM GBP', 'Principle GBP','Book Value GBP',
                                    'Residual Maturity Days','Sector Code','Category','Moodys Number', 'Fitch Number',
                                    'S&P Number','Final Rating', 'Final Letter Rating', 'CQS','Incorporation Code',
-                                   'Corporate / Institution', 'Investment Combo','RW', 'Customer Name']]
+                                   'Corporate / Institution', 'Investment Combo','RW', 'Customer Name', 'Institution elig']]
 
     # Write the data (excluding headers) to the worksheet
     ws.range((start_row, start_column)).value = capital_df_security.values
