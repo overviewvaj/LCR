@@ -422,7 +422,7 @@ def book_value_gbp(row):
     elif row['Currency'] == 'EUR':
         return round ((row['Principal Amount CCY']/row['Exchange Rate']), 2)
     elif row['Currency'] == 'GBP':
-        return round(row['Principal Amount CCY'] * (row['Purchase Price']/100), 2)
+        return round(row['Principal Amount CCY'], 2)
 
 # Apply the conversion function (book_value_gbp) to create a new column
 df_security['Book Value GBP'] = df_security.apply(book_value_gbp, axis=1)
@@ -2675,13 +2675,6 @@ df_limit = merged_df
 
 
 
-
-
-
-
-
-
-
 # Define a custom function to apply the logic
 def calculate_ccf(row):
     if row['Reference Code'] in ['CEL05', 'CEL06']:
@@ -2781,15 +2774,7 @@ def merge_security_with_ratings(df_security, df_rating):
 # Call the function to merge and update ratings information
 df_security = merge_security_with_ratings(df_security, df_rating)
 
-
-
-
-
 df_security.info()
-
-
-
-
 
 df_cust.columns
 
@@ -2809,13 +2794,6 @@ merged_df.drop(columns='Customer Identifier', inplace=True)
 
 # Assign it back to df_loandep if needed
 df_security = merged_df
-
-
-
-
-
-
-
 
 
 
@@ -3150,9 +3128,6 @@ df_security = df_security.drop_duplicates(keep='first')
 
 # ### Account Master
 
-
-
-
 def find_matching_lst_file(parent_folder):
     """
     Find the file in the given parent folder whose name starts with "acctMast" and has the extension ".LST".
@@ -3201,8 +3176,6 @@ else:
     
 # Read the account master to a data frame 
 df_acctmast  = pd.read_csv(csv_file_path, index_col=False)
-
-
 
 
 
@@ -3267,6 +3240,114 @@ def filter_and_process(df):
     Returns:
     pd.DataFrame: Processed DataFrame.
     """
+    # Step 0: Change the data type of column ACCT NUMBER to string format to avoid overflow issues
+    df['ACCT NUMBER'] = df['ACCT NUMBER'].astype(str)
+    
+    # Step 1: Filter rows where 'EOD BALANCE(BILR)' is not equal to zero
+    Column_L_filteration = df[df['EOD BALANCE(BILR)'] != 0]
+
+    # Step 2: Filter rows where 'GL SUB HEAD CODE' is not equal to the specified values
+    exclude_values = [80040, 80060, 80080, 85040, 85060, 85080, 89000]
+    Column_C_filteration = Column_L_filteration[~Column_L_filteration['GL SUB HEAD CODE'].isin(exclude_values)]
+
+    # Step 3: Create a new column named 'A/L'
+    Column_C_filteration['A/L'] = ''
+
+    # Step 4: Reorder the dataframe by 'GL SUB HEAD CODE' in ascending order
+    Column_C_filteration.sort_values(by='GL SUB HEAD CODE', inplace=True, ascending=True)
+
+    # Step 5: Assign 'A' or 'L' based on the values in 'EOD BALANCE(BILR)'
+    Column_C_filteration.loc[Column_C_filteration['EOD BALANCE(BILR)'] < 0, 'A/L'] = 'A'
+    Column_C_filteration.loc[Column_C_filteration['EOD BALANCE(BILR)'] >= 0, 'A/L'] = 'L'
+
+    # Step 6: Allocation based on the GL code 89020
+    filtered_89020 = Column_C_filteration[Column_C_filteration['GL SUB HEAD CODE'] == 89020]
+    balance_sum = filtered_89020['EOD BALANCE(BILR)'].sum()
+    Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'] == 89020, 'A/L'] = 'A' if balance_sum < 0 else 'L'
+
+    # Step 7: Filter the dataframe based on specific conditions
+    conditions = Column_C_filteration['GL SUB HEAD CODE'].isin([28020, 28030, 28050, 55020, 55030, 55050, 55070, 55100])
+    negative_balance = Column_C_filteration['EOD BALANCE(BILR)'] < 0
+    positive_balance = Column_C_filteration['EOD BALANCE(BILR)'] >= 0
+    Column_C_filteration.loc[conditions & negative_balance, 'A/L'] = 'A'
+    Column_C_filteration.loc[conditions & positive_balance, 'A/L'] = 'L'
+
+    # Step 8: Filter the dataframe based on specific conditions for GL SUB HEAD CODE and ACCT NUMBER
+    gl_sub_condition = Column_C_filteration['GL SUB HEAD CODE'] == 55070
+    acct_number_condition = Column_C_filteration['ACCT NUMBER'].isin([
+        '61198265507010', '61198405507010', '61198265507009', '61199785507007',
+        '61198405507007', '61198265507004', '61198405507001', '61198265507001'
+    ])
+    Column_C_filteration.loc[gl_sub_condition & acct_number_condition, 'A/L'] = 'A'
+
+    gl_sub_condition_new = Column_C_filteration['GL SUB HEAD CODE'] == 28050
+    acct_number_condition_new = Column_C_filteration['ACCT NUMBER'].isin([
+        '61198262805008', '61198402805008', '61198402805002', '61198262805002'
+    ])
+    Column_C_filteration.loc[gl_sub_condition_new & acct_number_condition_new, 'A/L'] = 'A'
+
+    # Step 9: Filter the dataframe based on specific conditions for GL SUB HEAD CODE and ACCT NUMBER
+    mask = (Column_C_filteration['GL SUB HEAD CODE'] == 55100) & (
+            Column_C_filteration['ACCT NUMBER'].isin(['61198265510002', '61198405510002'])
+    )
+    filtered_data = Column_C_filteration[mask]
+
+    net_balance = filtered_data['EOD BALANCE(BILR)'].sum()
+    Column_C_filteration.loc[mask, 'A/L'] = 'A' if net_balance < 0 else 'L'
+
+    # Step 10: Filter the dataframe based on SCHM CODE values
+    Column_C_filteration.loc[Column_C_filteration['SCHM CODE'].isin(['INCOM', 'EXPEN', 'NSB15', 'NSB16', 'NSB17']), 'A/L'] = 'L'
+
+    # Step 11: Remove data where SCHM CODE is 'CONAS' or 'CONLI'
+    Column_C_filteration = Column_C_filteration[~Column_C_filteration['SCHM CODE'].isin(['CONAS', 'CONLI'])]
+
+    # Step 12: Update 'A/L' based on GL codes
+    gl_sub_head_codes_A = [10010, 12030, 12261, 14060, 16050, 16250, 21000, 21010, 21040,
+                           21510, 21520, 26000, 26010, 27000, 27010, 27040, 27050, 27070,
+                           27100, 27143, 28020, 28030, 38060, 38070, 54000, 54060, 58000, 89010,
+                           52010, 52030, 52040, 52070, 53000]
+    Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'].isin(gl_sub_head_codes_A), 'A/L'] = 'A'
+
+    gl_sub_head_codes_L = [30000, 31000, 34000, 36000, 36020, 36060, 36070, 38000, 38010,
+                           38030, 38040, 42000, 42010, 42610, 46050, 52010, 52030, 52040,
+                           52070, 53000, 54010, 54020, 54050, 55030, 55050, 59000, 60000,
+                           62000, 62010, 62020, 62030, 62040, 62060, 62070, 62080, 62090,
+                           62100, 62110, 63000, 63030, 64010, 64020, 64040, 64050, 64060,
+                           64200, 64210, 64300, 65000, 70000, 70030, 70050, 70060, 74020,
+                           76000, 76010, 76010, 76030, 76040, 76045, 76090, 76120, 76200,
+                           78010, 78040, 78050]
+    Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'].isin(gl_sub_head_codes_L), 'A/L'] = 'L'
+
+    # Step 13: Check for OD accounts and allocate 'A' or 'L'
+    od_condition = Column_C_filteration['SCHM CODE'].str.startswith('OD')
+    Column_C_filteration.loc[od_condition & (Column_C_filteration['EOD BALANCE(BILR)'] < 0), 'A/L'] = 'A'
+    Column_C_filteration.loc[od_condition & (Column_C_filteration['EOD BALANCE(BILR)'] >= 0), 'A/L'] = 'L'
+
+    # Convert date columns to datetime format
+    Column_C_filteration['ACCT OPN DATE'] = pd.to_datetime(Column_C_filteration['ACCT OPN DATE'], dayfirst=True).dt.strftime('%d/%m/%Y')
+    Column_C_filteration['START DATE'] = pd.to_datetime(Column_C_filteration['START DATE'], dayfirst=True).dt.strftime('%d/%m/%Y')
+    Column_C_filteration['END DATE'] = pd.to_datetime(Column_C_filteration['END DATE'], dayfirst=True).dt.strftime('%d/%m/%Y')
+
+    return Column_C_filteration
+
+# Usage example
+truncated_acctMast = process_file(csv_file_path)  # Assuming this function reads and preprocesses the CSV
+truncated_acctMast = filter_and_process(truncated_acctMast)
+
+'''
+def filter_and_process(df):
+    """
+    Perform various filtering and processing operations on the DataFrame.
+
+    Args:
+    df (pd.DataFrame): Input DataFrame.
+
+    Returns:
+    pd.DataFrame: Processed DataFrame.
+    """
+    # Step 0: Change the data type of column ACCT NUMBER to intiger format
+    df['ACCT NUMBER'] = df['ACCT NUMBER'].astype(int)
+    
     # Step 1: Filter rows where 'EOD BALANCE(BILR)' is not equal to zero
     Column_L_filteration = df[df['EOD BALANCE(BILR)'] != 0]
 
@@ -3328,7 +3409,7 @@ def filter_and_process(df):
     # Step 12: Update 'A/L' based on GL codes
     gl_sub_head_codes_A = [10010, 12030, 12261, 14060, 16050, 16250, 21000, 21010, 21040,
                            21510, 21520, 26000, 26010, 27000, 27010, 27040, 27050, 27070,
-                           27100, 27143, 28030, 38060, 38070, 54000, 54060, 58000, 89010,
+                           27100, 27143, 28020, 28030, 38060, 38070, 54000, 54060, 58000, 89010,
                            52010, 52030, 52040, 52070, 53000]
     Column_C_filteration.loc[Column_C_filteration['GL SUB HEAD CODE'].isin(gl_sub_head_codes_A), 'A/L'] = 'A'
 
@@ -3359,6 +3440,8 @@ def filter_and_process(df):
 truncated_acctMast = process_file(csv_file_path)
 truncated_acctMast = filter_and_process(truncated_acctMast)
 
+'''
+
 
 
 
@@ -3388,8 +3471,8 @@ Assets['ACCT NUMBER'] = Assets['ACCT NUMBER'].astype('int64')
 acct_nums_to_replace = [
     61198261406001, 61198401406001, 61198401406002, 61198261406002, 61198262805002,
     61198402805008, 61198402805002, 61198262805008, 61198405406001, 61198265406001,
-    61198265507010, 61198405507010, 61198405507001, 61198265507001, 61198265507004,
-    61199785507007, 61198401605001, 61198401625001
+    61198265507010, 61198405507010, 61198405507001, 61198265507001, 61198401605001, 
+    61198401625001, 61198262805006
 ]
 
 # Condition to check for the account numbers to replace
@@ -3579,15 +3662,7 @@ def replace_and_sum_assets(Assets, trunc_df_frp_acc):
 Assets = replace_and_sum_assets(Assets, trunc_df_frp_acc)
 
 
-
-
-
-
-
 trunc_df_frp_acc.info()
-
-
-
 
 
 #Assets.columns
@@ -3596,67 +3671,29 @@ trunc_df_frp_acc.info()
 # ### MM Placements File (Loand Dep)
 
 
-
-
 #df_repay.head(5)
 
 
-
-
-
-df_loandep.head(5)
-
-
-
-
+#df_loandep.head(5)
 
 # Filter the DataFrame based on the conditions
 capital_df_loandep = df_loandep[~df_loandep['Product ID'].isin(['LAA', 'TDA'])]
 
-
-
-
-
-capital_df_loandep.info()
-
-
-
+#capital_df_loandep.info()
 
 
 # Convert the Date columns to date time format
 capital_df_loandep['Start Date'] = pd.to_datetime(capital_df_loandep['Start Date'], dayfirst=True)
 capital_df_loandep['Maturity Date'] = pd.to_datetime(capital_df_loandep['Maturity Date'], dayfirst=True)
-
-
-
-
-
-capital_df_loandep.info()
-
-
-
-
+#capital_df_loandep.info()
 
 # Merge the DataFrames on 'Currency Code'
 capital_df_loandep = capital_df_loandep.merge(df_exch, left_on='Currency', right_on='Currency Code', how='left')
 
-
-
-
-
 # Drop the column Currency code
 columns_to_drop = ['Currency Code']
 capital_df_loandep = capital_df_loandep.drop(columns=columns_to_drop)
-
-
-
-
-
-capital_df_loandep.info()
-
-
-
-
+#capital_df_loandep.info()
 
 # Define the comparison function
 def get_deal_status(start_date, date_obj):
@@ -3664,16 +3701,7 @@ def get_deal_status(start_date, date_obj):
 # Apply the function to create the 'Deal Status' column
 capital_df_loandep['Deal Status'] = capital_df_loandep.apply(lambda row: get_deal_status(row['Start Date'], date_obj), axis=1)
 
-
-
-
-
 #capital_df_loandep['Deal Status']
-
-
-
-
-
 # Coulumnd Principle Amount (GBP)
 
 def principal_amt_calc(row):
@@ -3683,10 +3711,6 @@ def principal_amt_calc(row):
         return round(row['Amount Currency'],2)
 # Apply the  function  to create a new column
 capital_df_loandep['Principal Amount (GBP)'] = capital_df_loandep.apply(principal_amt_calc, axis=1)
-
-
-
-
 
 # Column Borrowing/Placement#
 
@@ -3700,14 +3724,7 @@ def borrow_place(row):
 capital_df_loandep['Borrowing/PLacement'] = capital_df_loandep.apply(borrow_place, axis=1)
 
 
-
-
-
 capital_df_loandep['Residual Maturity Days'] = (capital_df_loandep['Maturity Date'] - date_obj).dt.days
-
-
-
-
 
 def categorize_rwmmp(row):
     if row['Residual Maturity Days'] > 90:  # Greater than 90 days
@@ -3717,16 +3734,7 @@ def categorize_rwmmp(row):
 
 # Apply the categorization function to create a new column
 capital_df_loandep['RW_MMP'] = capital_df_loandep.apply(categorize_rwmmp, axis=1)
-
-
-
-
-
-capital_df_loandep
-
-
-
-
+#capital_df_loandep
 
 def calculate_rw_exposure(row):
     return row['Principal Amount (GBP)'] * row['RW_MMP']
@@ -3734,30 +3742,14 @@ def calculate_rw_exposure(row):
 # Apply the function to create a new column 'RW_EXPOSURE'
 capital_df_loandep['RW_EXPOSURE'] = capital_df_loandep.apply(calculate_rw_exposure, axis=1)
 
-
-
-
-
 def calculate_rw_capital(row):
     return row['RW_EXPOSURE'] * 0.08
 
 # Apply the function to create a new column 'RW_EXPOSURE'
 capital_df_loandep['REQ_Capital'] = capital_df_loandep.apply(calculate_rw_capital, axis=1)
 
-
-
-
-
 capital_df_loandep['ORG Maturity Days'] = (capital_df_loandep['Maturity Date'] - capital_df_loandep['Start Date']).dt.days
-
-
-
-
-
-capital_df_loandep.columns
-
-
-
+#capital_df_loandep.columns
 
 
 # Reorder/ Restructre the data frame by keeping only required/essential columns in the dataframe
@@ -3767,19 +3759,77 @@ capital_df_loandep = capital_df_loandep[['Deal Reference', 'Cif id ','Currency',
                                          'Borrowing/PLacement', 'RW_MMP', 'RW_EXPOSURE', 'REQ_Capital',
                                          'ORG Maturity Days', 'Residual Maturity Days']]
 
-
-
-
-
 #capital_df_loandep.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/calpitalLoandep1.csv', index = False)
 
 
 # ### Pipeline Tab
 
+def read_and_process_pipeline_file(parent_folder):
+    """
+    Read specific worksheets from the Excel file in the specified parent folder,
+    filter the data, perform necessary calculations, and save the result as a CSV file.
 
+    Args:
+    parent_folder (str): Path of the parent folder.
 
+    Returns:
+    pd.DataFrame: Processed DataFrame containing pipeline data.
+    """
+    # Find the file matching the specified pattern
+    file_pattern = os.path.join(parent_folder, 'Pipeline Summary Report*.xlsx')
+    file_list = glob.glob(file_pattern)
 
-def read_dependency_coding_file(parent_folder):
+    if len(file_list) == 0:
+        print("No matching Excel file found.")
+        return None
+
+    # Assuming there's only one matching file, use the first one in the list
+    file_path = file_list[0]
+
+    # Use xlwings to load the Excel file
+    app = xw.App(visible=False)  # Create an Excel app instance (hidden)
+    wb = app.books.open(file_path)  # Open the Excel file
+
+    # Initialize DataFrame for the worksheet
+    df_pipeline = None
+
+    # Loop through each worksheet and load data into respective DataFrame
+    for sheet in wb.sheets:
+        if sheet.name == 'Case Summary':
+            df_pipeline = sheet.used_range.options(pd.DataFrame, index=False, header=True).value
+
+    wb.close()  # Close the workbook
+    app.quit()  # Quit the Excel app
+
+    if df_pipeline is not None:
+        print("Pipeline data loaded successfully.")
+
+        # Filter the data frame to have only Legals Instructed and COT Received
+        df_pipeline = df_pipeline[df_pipeline['Application Stage'].isin(['Legals Instructed', 'COT Received'])]
+
+        # Perform the necessary calculations
+        df_pipeline['CCF'] = 0.2
+        df_pipeline['RW'] = 0.35
+        df_pipeline['Exposure Post CCF'] = df_pipeline['Advance'] * df_pipeline['CCF']
+        df_pipeline['RWA'] = df_pipeline['Exposure Post CCF'] * df_pipeline['RW']
+
+        # Define the output CSV file path
+        output_csv_path = os.path.join(parent_folder, 'BTL Pipeline.csv')
+
+        # Save the DataFrame to CSV
+        df_pipeline.to_csv(output_csv_path, index=False)
+
+        print(f"Pipeline data saved successfully to {output_csv_path}.")
+        return df_pipeline
+    else:
+        print("Error in loading Pipeline data.")
+        return None
+
+# Usage
+#parent_folder = 'path_to_your_parent_folder'
+df_pipeline = read_and_process_pipeline_file(parent_folder)
+
+'''def read_dependency_coding_file(parent_folder):
     """
     Read specific worksheets from the Excel file in the specified parent folder.
 
@@ -3835,45 +3885,23 @@ if df_pipeline is not None:
 else:
     print("Error in loading Pipeline data.")
 
+#df_pipeline
 
 
-
-
-df_pipeline
-
-
-
-
-
-df_pipeline.columns
-
-
-
-
+#df_pipeline.columns
 
 # Filter the data frame to have only Legals Instruceted And COT received
 df_pipeline = df_pipeline[df_pipeline['Application Stage'].isin(['Legals Instructed', 'COT Received'])]
-
-
-
-
 
 df_pipeline['CCF'] = 0.2
 df_pipeline['RW'] = 0.35
 df_pipeline['Exposure Post CCF'] = df_pipeline['Advance']*0.2
 df_pipeline['RWA'] = df_pipeline['Advance']*0.2*0.35
 
-
-
-
-
 #df_pipeline.to_csv('C:/Users/sbiuser/Downloads/TRIAL & ERROR Files/Dailies_Python Values/trial/trial.csv', index = False)
-
+'''
 
 # ### Account Balance File
-
-
-
 
 def update_accbal_values(df_accbal):
     """
@@ -3904,9 +3932,6 @@ def update_accbal_values(df_accbal):
 filtered_df_accbal = update_accbal_values(df_accbal)
 
 
-
-
-
 capital_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB Flag', 'Deal Reference',
                                    'Investment Type', 'Trading Indicator', 'Encumbered Flag', 'Currency',
                                    'Nominal Amount CCY', 'Principal Amount CCY', 'Market Value CCY', 'MTM',
@@ -3932,11 +3957,6 @@ capital_security = df_security[['Branch Id', 'Issuer Id', 'Product Type', 'MDB F
 # Group the DataFrame by 'Product Type' and calculate the sum of 'Balance BILR'
 #az = capital_security.groupby('Product Type')['Book Value GBP'].sum().reset_index()
 #az
-
-
-
-
-
 
 
 
@@ -3985,7 +4005,8 @@ def write_assets_to_worksheet(ws, df, start_row=5, start_column=1):
     None
     """
     # Get the range starting from the specified row and column
-    end_row = start_row + len(df) - 1  # Number of rows based on DataFrame length
+    end_row = ws.cells.last_cell.row
+    #end_row = start_row + len(df) - 1  # Number of rows based on DataFrame length
     end_column = start_column + df.shape[1] - 1  # Number of columns based on DataFrame shape
     range_to_clear = ws.range((start_row, start_column), (end_row, end_column))
 
@@ -4010,14 +4031,7 @@ assets_subset = Assets[columns_to_keep]
 # Use the defined function to write the subset to the worksheet
 write_assets_to_worksheet(ws_capital_asset, assets_subset)
 
-
-
-
-
 Assets
-
-
-
 
 
 '''# Select the worksheet named "Lombard Repay"
@@ -4042,14 +4056,7 @@ assets_subset = Assets[columns_to_keep]
 # Write the data (excluding headers) to the worksheet
 ws_capital_asset.range("A5").value = assets_subset.values'''
 
-
-
-
-
-df_limit.info()
-
-
-
+#df_limit.info()
 
 
 # Update the Worksheet named LimitSub
@@ -4098,16 +4105,6 @@ limit_subset = capital_df_limit[columns_to_keep]
 # Use the defined function to write the subset to the worksheet
 write_capital_limit_to_worksheet(ws_capital_limit, limit_subset)
 
-
-
-
-
-
-
-
-
-
-
 def write_capital_MMP_to_worksheet(ws, start_row=6, start_column=2):
     """
     Clear the contents of a specified worksheet starting from a given cell.
@@ -4140,15 +4137,7 @@ ws_MMP = capital_file_wb.sheets["MM Placements"]
 # Clear the worksheet starting from the 6th row across all columns
 write_capital_MMP_to_worksheet(ws_MMP)
 
-
-
-
-
-df_security
-
-
-
-
+#df_security
 
 def clear_and_write_data_to_sheet(ws, df, start_row=5, start_column=1, end_column=72):
     """
@@ -4229,9 +4218,6 @@ pivot_table_name = "PivotTable1"  # Adjust with the actual pivot table name
 refresh_pivot_table(ws_security, pivot_table_name)
 
 
-
-
-
 def write_custfile_to_worksheet(ws, start_row=2, start_column=1):
     """
     Clear the contents of a specified worksheet starting from a given cell.
@@ -4263,9 +4249,6 @@ ws_cust = capital_file_wb.sheets["Lombard Cust"]
 
 # Clear the worksheet starting from the 6th row across all columns
 write_custfile_to_worksheet(ws_cust)
-
-
-
 
 
 def write_BTLLTV_to_worksheet(ws, start_row=3, start_column=1, end_column=16 ):
@@ -4335,8 +4318,6 @@ write_loand_dep_to_worksheet(ws_loan_dep)
 
 
 
-
-
 def write_accbal_to_worksheet(ws, start_row=2, start_column=1):
     """
     Clear the contents of a specified worksheet starting from a given cell.
@@ -4370,9 +4351,6 @@ ws_accbal = capital_file_wb.sheets["Lombard Account Balance Report_"]
 write_accbal_to_worksheet(ws_accbal)
 
 
-
-
-
 '''# Select the worksheet named "Lombard Repay"
 ws_exch = capital_file_wb.sheets["Date_ExchRates"]
 
@@ -4392,7 +4370,37 @@ except ValueError:
 After this delete the values from column C starting from row 6'''
 
 
+def write_df_pipeline_to_worksheet(ws, start_row=4, start_column=1):
+    """
+    Clear the contents of a specified worksheet starting from a given cell.
 
+    Args:
+    ws (xlwings.Sheet): Worksheet to clear.
+    start_row (int): Starting row for clearing data. Default is 6.
+    start_column (int): Starting column for clearing data. Default is 1.
+
+    Returns: the new values from data frame capital_df_loandep
+    None
+    """
+    # Get the last used row and column
+    last_row = ws.cells.last_cell.row
+    last_column = ws.cells.last_cell.column
+
+    # Get the range starting from the specified row and column to the last row and column
+    range_to_clear = ws.range((start_row, start_column), (last_row, last_column))
+
+    # Clear the contents of the range
+    range_to_clear.clear_contents()
+    
+    # Write the data (excluding headers) to the worksheet
+    ws.range((start_row, start_column)).value = df_pipeline.values
+
+# Example usage:
+# Assuming ws_MMP is the worksheet named "BTL Pipeline"
+ws_btl_pipeline = capital_file_wb.sheets["BTL Pipeline"]
+
+# Clear the worksheet starting from the 6th row across all columns
+write_df_pipeline_to_worksheet(ws_btl_pipeline)
 
 
 def write_exch_to_worksheet(wb, sheet_name, date_obj, df_exch):
